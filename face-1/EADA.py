@@ -21,8 +21,8 @@ decay_rate=0.7#parameter of repair operator
 heat_coe=1500#heat coefficiency
 CF=0.4#coefficient in EADA
 
-hot=[[15,7,3,0,[0.3,0.4]],[14,5,5,0,[0.25,0.44]]]
-cold=[[1.5,3,5,0,[0.55,0.66]],[1,4,3,0,[0.77,0.88]]]
+hot=[[100,70,3,0,[0.3,0.4]],[140,50,5,0,[0.25,0.44]]]
+cold=[[15,30,5,0,[0.55,0.66]],[10,35,3,0,[0.77,0.88]]]
 
 for flow in hot:
     a=float(flow[0])
@@ -459,30 +459,30 @@ def repair(t,sp,structure_info,heat_load,cold_utility):
                 while stop == 0:
                     flag = 1
                     for jj in range(Nh):
+                        temp_max = 0
+                        flag_ini = 0
+                        for ii in range(Nc):
+                            if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
+                                temp_temp = cold[ii][0] + delta_T
+                                flag_ini = 1
+                                if temp_temp > temp_max:
+                                    temp_max = temp_temp
                         for ii in range(Nc):
                             if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
                                 if t[kk][1][jj] - delta_T < t[kk][0][ii] or t[kk][1][jj]>hot[jj][0]:
-                                    for jj in range(Nh):
-                                        temp_max = 0
-                                        flag_ini = 0
-                                        for ii in range(Nc):
-                                            if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
-                                                temp_temp = cold[ii][0] + delta_T
-                                                flag_ini = 1
-                                                if temp_temp > temp_max:
-                                                    temp_max = temp_temp
-                                        if flag_ini == 1:
-                                            llll = temp_max - hot[jj][1]
-                                            cold_utility[jj]=random.randrange(int(float(llll) * hot[jj][3]), int(hot[jj][2]), 1)
-                                            t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
-                                        if flag_ini == 0:
-                                            cold_utility[jj]=random.randrange(0, int(hot[jj][2]), 1)
-                                            t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
-                                            t[kk][3][jj] = t[kk][1][jj]
+                                    if flag_ini == 1:
+                                        llll = temp_max - hot[jj][1]
+                                        cold_utility[jj] = random.randrange(int(float(llll) * hot[jj][3]),
+                                                                            int(hot[jj][2]), 1)
+                                        t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
+                                    if flag_ini == 0:
+                                        cold_utility[jj] = random.randrange(0, int(hot[jj][2]), 1)
+                                        t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
+                                        t[kk][3][jj] = t[kk][1][jj]
                                     flag = 0
-                                    global_flag=1
-                        if jj == Nh - 1 and flag == 1:
-                            stop = 1
+                                    global_flag=0
+                    if  flag == 1:
+                        stop = 1
             if kk != Ns - 1:
                 stop = 0
                 while stop == 0:
@@ -498,9 +498,9 @@ def repair(t,sp,structure_info,heat_load,cold_utility):
                                             t[kk][3][jjj] =t[kk][1][jjj] + heat_load[kk][ii] * sp[kk][ii][jjj] / float(hot[jjj][3])
                                     t[kk][2][ii] = t[kk][0][ii] + float(heat_load[kk][ii]) / cold[ii][3]
                                     flag = 0
-                                    global_flag=1
-                        if jj == Nh - 1 and flag == 1:
-                            stop = 1
+                                    global_flag=0
+                    if  flag == 1:
+                        stop = 1
                 for jj in range(Nh):
                     t[kk+1][1][jj]=t[kk][3][jj]
                 for ii in range(Nc):
