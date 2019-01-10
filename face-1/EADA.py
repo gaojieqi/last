@@ -10,19 +10,19 @@ Nh=2#hot count
 Nc=2#cold count
 delta_T=10#pinch temperature
 population=5
-a_cost=1#fix capital
-b_cost=1#
-c_cost=3#power efficient
+a_cost=49000#fix capital
+b_cost=2520#
+c_cost=0.8#power efficient
 i_cost=0.1#interest rate
 t_cost=20#operational interval
-c_hu=4#cost of hot_utility
-c_cu=5#cost of cold_utility
+c_hu=28000#cost of hot_utility
+c_cu=30000#cost of cold_utility
 decay_rate=0.6#parameter of repair operator
-heat_coe=1500#heat coefficiency
+heat_coe=750#heat coefficiency
 CF=0.4#coefficient in EADA
 
-hot=[[100,70,30,0,[0.3,0.4]],[140,50,50,0,[0.25,0.44]]]
-cold=[[15,30,50,0,[0.55,0.66]],[10,35,30,0,[0.77,0.88]]]
+hot=[[100,70,300,0,[0.3,0.4]],[140,50,500,0,[0.25,0.44]]]
+cold=[[15,30,500,0,[0.55,0.66]],[10,35,300,0,[0.77,0.88]]]
 
 for flow in hot:
     a=float(flow[0])
@@ -39,7 +39,7 @@ hot_duty_max = []
 for jj in range(Nh):
     cold_duty_max.append(0)
 #Outter iteration
-def GA(mut=0.8,crossp=0.7,popsize=population,its_GA=2,its_EADA=2):
+def GA(mut=0.8,crossp=0.7,popsize=20,its_GA=5,its_EADA=10):
     global_fitness=10000000000000000
     pop=[]#no level discrimination
     pop_level=[]#level discrimination
@@ -123,10 +123,11 @@ def GA(mut=0.8,crossp=0.7,popsize=population,its_GA=2,its_EADA=2):
 
 
 #inner iteration
-def EADA(structure_info, mut=0.8, crossp=0.7, popsize=6, its=2):
+def EADA(structure_info, mut=0.8, crossp=0.7, popsize=150, its=50):
+    pr=[]
     pop = []
     fitness=[]
-    best_fitness=1000000000000
+    best_fitness=100000000000000000
     #initialize
     ##initialize temperature. 0-3 dimension:cold-in/hot-out/cold-out/hot-in (T[ [[0],[1],[2],[3]],[...] ])
     for ppppp in range(popsize):
@@ -341,6 +342,10 @@ def EADA(structure_info, mut=0.8, crossp=0.7, popsize=6, its=2):
                         for ii in range(Nc):
                             if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1 and qwer!=0:
                                 pop[ppppp][0][kk][jj][ii]=pop[ppppp][0][kk][jj][ii]/float(qwer)
+            #recalclate cold utility
+            for jj in range(Nh):
+                if pop[ppppp][2][jj]>hot[jj][2]:
+                    pop[ppppp][2][jj]=copy.deepcopy(hot[jj][2]*0.8)
             #recalculate temperature
             T__=recalculate_T(structure_info,pop[ppppp][2],pop[ppppp][1],pop[ppppp][0])
             #repair all
@@ -350,9 +355,14 @@ def EADA(structure_info, mut=0.8, crossp=0.7, popsize=6, its=2):
             if fttt<best_fitness:
                 record=[T__,pop[ppppp][0],structure_info,pop[ppppp][1],pop[ppppp][2],hot_u]
                 best_fitness=fttt
+
             else:
                 record=1#nonsense
-    return record,best_fitness
+            pr.append(fttt)
+
+    plt.plot(pr)
+    plt.show()
+    return record,best_fitness/(10**7)
 
 def hot_u_fun(structure_info,heat_load):
     love = []
@@ -401,7 +411,7 @@ def recalculate_T(structure_info,cold_utility,heat_load,split):
                         d+=heat_load[kk][ii]*split[kk][ii][jj]
                         f__=1
                 if f__==1:
-                    tttt = hot[jj][1]+cold_utility[jj]/float(hot[jj][3]) + d / float(cold[ii][3])
+                    tttt = T_[1][jj] + d / float(hot[jj][3])
                     T__.append(tttt )
                 if f__==0:
                     T__.append(T_[1][jj])
@@ -429,7 +439,7 @@ def recalculate_T(structure_info,cold_utility,heat_load,split):
                         d += heat_load[kk][ii] * split[kk][ii][jj]
                         f__ = 1
                 if f__ == 1:
-                    tttt = T[kk - 1][3][jj]+ d / float(cold[ii][3])
+                    tttt = T[kk - 1][3][jj]+ d / float(hot[jj][3])
                     T__.append(tttt)
                 if f__ == 0:
                     T__.append(T_[1][jj])
@@ -445,8 +455,17 @@ def recalculate_T(structure_info,cold_utility,heat_load,split):
             T_.append(T__)
             T__ = []
             for ii in range(Nc):
-                tttt = T[kk - 1][2][ii] + heat_load[kk][ii] / float(cold[ii][3])
-                T__.append(tttt)
+                d=0
+                f__=0
+                for jj in range(Nh):
+                    if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
+                        d += heat_load[kk][jj] * split[kk][jj][ii]
+                        f__ = 1
+                if f__ == 1:
+                    tttt = T[kk - 1][2][ii]+ d / float(cold[ii][3])
+                    T__.append(tttt)
+                if f__ == 0:
+                    T__.append(T_[1][ii])
             T_.append(T__)
             T__ = []
             for jj in range(Nh):
@@ -487,6 +506,16 @@ def repair(t,sp,structure_info,heat_load,cold_utility):
                                         t[kk][3][jj] = t[kk][1][jj]
                                     flag = 0
                                     global_flag=0
+                        if t[kk][1][jj]>hot[jj][0] or t[kk][1][jj]<hot[jj][1]:
+                            if flag_ini == 1:
+                                llll = temp_max - hot[jj][1]
+                                cold_utility[jj] = random.randrange(int(float(llll) * hot[jj][3]),
+                                                                    int(hot[jj][2]), 1)
+                                t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
+                            if flag_ini == 0:
+                                cold_utility[jj] = random.randrange(0, int(hot[jj][2]), 1)
+                                t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
+                                t[kk][3][jj] = t[kk][1][jj]
                     if  flag == 1:
                         stop = 1
             if kk != Ns - 1:
@@ -511,8 +540,8 @@ def repair(t,sp,structure_info,heat_load,cold_utility):
                                         if structure_info[Nh*Nc*kk+ii * Nh + jjj] == 1:
                                             t[kk][3][jjj]-=lkjm * sp[kk][ii][jjj] / float(hot[jjj][3])
                                     t[kk][2][ii] = t[kk][0][ii] + float(heat_load[kk][ii]) / cold[ii][3]
-                                    flag = 0
                                     global_flag=0
+                                    flag=0
                     if  flag == 1:
                         for ii in range(Nc):
                             t[kk][2][ii] = t[kk][0][ii] + float(heat_load[kk][ii]) / cold[ii][3]
@@ -578,7 +607,7 @@ def fobj(T,split,structure_info,heat_load,cold_utility,hot_utility):
                         delta_hot=T[kk][3][jj]-T[kk][2][ii]
                         delta_cold=T[kk][1][jj]-T[kk][0][ii]
                         A=heat_load[kk][ii]*split[kk][ii][jj]/float(heat_coe*delta_T_fun(delta_hot,delta_cold))
-                        c_capital+=(a_cost+b_cost*(A**c_cost))*((1+i_cost)**t_cost)*(t_cost**(-1))
+                        c_capital+=(a_cost+b_cost*(A**c_cost))*1.5/20
         if kk==Ns-1:
             for jj in range(Nh):
                 for ii in range(Nc):
@@ -586,15 +615,16 @@ def fobj(T,split,structure_info,heat_load,cold_utility,hot_utility):
                         delta_hot = T[kk][3][jj] - T[kk][2][ii]
                         delta_cold = T[kk][1][jj] - T[kk][0][ii]
                         A = heat_load[kk][jj] * split[kk][jj][ii] / float(heat_coe * delta_T_fun(delta_hot, delta_cold))
-                        c_capital += (a_cost + b_cost * (A ** c_cost)) * ((1 + i_cost) ** t_cost) * (t_cost ** (-1))
+                        c_capital += (a_cost + b_cost * (A**c_cost ))*1.5 /20
     #utility cost
+    #TODO set different cost of utility according to their qualities
     for jj in range(Nh):
         CU+=cold_utility[jj]
     for ii in range(Nc):
         HU+=hot_utility[ii]
     c_energy=HU*c_hu+CU*c_cu
     c_global=c_energy+c_capital
-    return c_global
+    return 10**7/float(c_global)
 
 def delta_T_fun(delta_hot,delta_cold):
     if delta_hot>1.7*delta_cold:
