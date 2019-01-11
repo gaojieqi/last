@@ -279,7 +279,7 @@ def EADA(structure_info, mut=0.8, crossp=0.7, popsize=10, its=5):
         hot_utility=hot_u_fun(structure_info,heat_load)
         #add to fitness
         fit_unit=fobj(T,split,structure_info,heat_load,cold_utility,hot_utility)
-
+        #insert to pop and sort
         if len(fitness)==0:
             fitness.append(fit_unit)
         if len(fitness) == 1:
@@ -299,13 +299,17 @@ def EADA(structure_info, mut=0.8, crossp=0.7, popsize=10, its=5):
                     if qwer < len(fitness) - 1:
                         if fit_unit < fitness[qwer] and fit_unit > fitness[qwer + 1]:
                             fitness = change(fitness, fit_unit, qwer+1)
+                            # convert to genetic code
+                            gen = []
+                            gen = gen + [split] + [heat_load] + [cold_utility]  # code components
+                            pop = change(pop, gen, qwer)
+                            break
                     if qwer == len(fitness)-1:
                         fitness.append(fit_unit)
                         # convert to genetic code
-                    gen = []
-                    gen = gen + [split] + [heat_load] + [cold_utility]  # code components
-                    pop = change(pop, gen, 0)
-                    break
+                        gen = []
+                        gen = gen + [split] + [heat_load] + [cold_utility]  # code components
+                        pop = change(pop, gen, qwer)
     for asdf in range(its):
         ssssss=0
         for ppppp in range(popsize):
@@ -383,16 +387,45 @@ def EADA(structure_info, mut=0.8, crossp=0.7, popsize=10, its=5):
             T__, pop[ppppp][1], pop[ppppp][2],abandon = repair(T__, pop[ppppp][0], structure_info, pop[ppppp][1], pop[ppppp][2])
             if abandon==1:
                 abandon_record+=1
+                popsize-=1
+                pop=abandon_fun(pop,ppppp)
                 continue#skip it's fitness calculation
             hot_u=hot_u_fun(structure_info,pop[ppppp][1])
-            fttt=fobj(T__,pop[ppppp][0],structure_info,pop[ppppp][1],pop[ppppp][2],hot_u)
-            if fttt>best_fitness:
+            fit_unit=fobj(T__,pop[ppppp][0],structure_info,pop[ppppp][1],pop[ppppp][2],hot_u)
+            # insert to pop and sort
+            if len(fitness) == 0:
+                fitness.append(fit_unit)
+            if len(fitness) == 1:
+                if fit_unit > fitness[0]:
+                    fitness = [fit_unit, fitness[0]]
+                else:
+                    fitness.append(fit_unit)
+            if len(fitness) >= 2:
+                if fit_unit > fitness[0]:
+                    fitness = change(fitness, fit_unit, 0)
+                    # change pop
+                    total_buf=pop[ppppp]
+                    pop=abandon_fun(pop,ppppp)
+                    pop = change(pop, total_buf, 0)
+                else:
+                    for qwer in range(len(fitness)):
+                        if qwer < len(fitness) - 1:
+                            if fit_unit < fitness[qwer] and fit_unit > fitness[qwer + 1]:
+                                fitness = change(fitness, fit_unit, qwer + 1)
+                        if qwer == len(fitness) - 1:
+                            fitness.append(fit_unit)
+                        # change pop
+                        total_buf = pop[ppppp]
+                        pop = abandon_fun(pop, ppppp)
+                        pop = change(pop, total_buf, qwer)
+                        break
+            #find the best one
+            if fit_unit>best_fitness:
                 record=[T__,pop[ppppp][0],structure_info,pop[ppppp][1],pop[ppppp][2],hot_u]
-                best_fitness=fttt
-
+                best_fitness=fit_unit
             else:
                 record=1#nonsense
-            pr.append((10**10)/fttt)
+            pr.append((10**10)/fit_unit)
     print ('abandon record:',abandon_record)
     plt.plot(pr)
     plt.show()
@@ -707,7 +740,12 @@ def change(fitness,fit_unit,qwer):
     for i in range(qwer,len(fitness)):
         d.append(fitness[i])
     return d
-
+def abandon_fun(pop,ppppp):
+    d=[]
+    for i in range(len(pop)):
+        if i!=pop:
+            d.append(pop[i])
+    return d
 
 re,fit=EADA(structure_info=[1,1,1,0,1,0,1,1])
 print (fit)
