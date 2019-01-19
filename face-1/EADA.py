@@ -10,6 +10,7 @@ Nh=2#hot count
 Nc=2#cold count
 PU_count=4#process count
 Wast_water_count=1#water network output count
+fresh_t=10
 delta_T=10#pinch temperature
 a_cost=49000#fix capital
 b_cost=2520#
@@ -25,13 +26,13 @@ upper_range=0.1#Top generation chozen in eade
 lower_range=0.7#Worest generaton chozen in eade
 selection_rate=0.99#selection of each iteration in eade
 factor=2000000/(3.6*24)#transform productivity to KW
-water_capacity=4.3#specia heat capacity for water
+water_capacity=4.2#specia heat capacity for water(MJ)
 
 
 
-hot_origin=[[100,70,300,0,[0.3,0.4]],[140,50,500,0,[0.25,0.44]]]
+hot_origin=[[100,70,300,0,[0.3,0.4]],[140,50,500,0,[0.25,0.44]]]#[inlet_temperature, outlet_temperature,enthalpy,k,heat_transfer]
 cold_origin=[[15,30,500,0,[0.55,0.66]],[10,35,300,0,[0.77,0.88]]]
-PU=[[60,60,35],[70,60,40],[40,60,30],[70,60,45]]#[inlet_temperature, outlet_temperature, mass_quantity]
+PU=[[60,60,35],[70,60,40],[40,60,30],[70,60,45]]#[inlet_temperature, outlet_temperature, mass_quantity(tone)]
 
 
 
@@ -46,10 +47,11 @@ def water_network(its=10):
         #TODO connections need to be restrict
         ttt=split(tt,PU_count+Wast_water_count)
         PU_split.append(ttt)
-    #PU_MIX records temperature
-    PU_MIX=[]
+    #calculate stream information and add to hot/cold
     for pp in range(len(PU)):
         s=0
+        m=[]
+        t=[]
         for jj in range(len(PU_split)):
             for ii in range(len(PU_split[jj])):
                 if ii ==pp:
@@ -63,9 +65,16 @@ def water_network(its=10):
                 for ii in range(len(PU_split[jj])):
                     if ii ==pp:
                         PU_split[jj][ii]*=PU[pp][2]/s
+                        m.append(PU_split[jj][ii])
+                        t.append(PU[jj][1])
             for jj in range(len(fresh_split)):
                 if jj==pp:
                     fresh_split[jj]*=PU[pp][2]/s
+                    m.append(fresh_split[jj])
+                    t.append(fresh_t)
+        #calcuate stream start and end temperature, enthalpy
+        t_start=mix_T(m,t)
+        t_end=
         PU_MIX.append()
 
 def GA(mut=0.2,crossp=0.7,popsize=10,its_GA=200):
@@ -757,8 +766,12 @@ def split(total,num):
     for pp in range(PU_count):
         split_.append(s_buf[pp + 1] - s_buf[pp])
     return split_
-def mix_T(m1,t1,m2,t2):
-    return (m2*t2+m1*t1)/(m1+m2)
+def mix_T(m,t):
+    if len(m)==1:
+        return m,t
+    else:
+        aaaaa,bbbbb=mix_T(m[1:],t[1:])
+        return (m[0]*t[0]+aaaaa*bbbbb)/(m[0]+aaaaa)
 
 def restrict():
     return 1
