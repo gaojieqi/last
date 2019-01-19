@@ -30,13 +30,12 @@ water_capacity=4.2#specia heat capacity for water(MJ)
 
 
 
-hot_origin=[[100,70,300,0,[0.3,0.4]],[140,50,500,0,[0.25,0.44]]]#[inlet_temperature, outlet_temperature,enthalpy,k,heat_transfer]
-cold_origin=[[15,30,500,0,[0.55,0.66]],[10,35,300,0,[0.77,0.88]]]
-PU=[[60,60,35],[70,60,40],[40,60,30],[70,60,45]]#[inlet_temperature, outlet_temperature, mass_quantity(tone)]
+hot_origin=[[100,70,300,0],[140,50,500,0]]#[inlet_temperature, outlet_temperature,enthalpy,k]
+cold_origin=[[15,30,500,0],[10,35,300,0]]
+PU=[[60,66,35],[70,60,40],[40,60,30],[70,60,45]]#[inlet_temperature, outlet_temperature, mass_quantity(tone)]
 
 
-
-def water_network(its=10):
+def water_network(popsize=10,its=10):
     #initialize
     fresh_water=100
     fresh_split=split(fresh_water,PU_count)
@@ -47,37 +46,57 @@ def water_network(its=10):
         #TODO connections need to be restrict
         ttt=split(tt,PU_count+Wast_water_count)
         PU_split.append(ttt)
-    #calculate stream information and add to hot/cold
-    for pp in range(len(PU)):
-        s=0
-        m=[]
-        t=[]
-        for jj in range(len(PU_split)):
-            for ii in range(len(PU_split[jj])):
-                if ii ==pp:
-                    s+=PU_split[jj][ii]
-        for jj in range(len(fresh_split)):
-            if jj==pp:
-                s+=fresh_split[jj]
-                break
-        if s!=PU[pp][2]:
+    #initalize EADE pop
+    pop_stream=[]
+    pop=[]
+    fit=[]
+    for qqqqq in range(popsize):
+        # copy stream flow
+        hot = copy.deepcopy(hot_origin)
+        cold = copy.deepcopy(cold_origin)
+        # calculate stream information and add to hot/cold
+        for pp in range(len(PU)):
+            s = 0
+            m = []
+            t = []
             for jj in range(len(PU_split)):
                 for ii in range(len(PU_split[jj])):
-                    if ii ==pp:
-                        PU_split[jj][ii]*=PU[pp][2]/s
-                        m.append(PU_split[jj][ii])
-                        t.append(PU[jj][1])
+                    if ii == pp:
+                        s += PU_split[jj][ii]
             for jj in range(len(fresh_split)):
-                if jj==pp:
-                    fresh_split[jj]*=PU[pp][2]/s
-                    m.append(fresh_split[jj])
-                    t.append(fresh_t)
-        #calcuate stream start and end temperature, enthalpy
-        t_start=mix_T(m,t)
-        t_end=
-        PU_MIX.append()
+                if jj == pp:
+                    s += fresh_split[jj]
+                    break
+            if s != PU[pp][2]:
+                for jj in range(len(PU_split)):
+                    for ii in range(len(PU_split[jj])):
+                        if ii == pp:
+                            PU_split[jj][ii] *= PU[pp][2] / s
+                            m.append(PU_split[jj][ii])
+                            t.append(PU[jj][1])
+                for jj in range(len(fresh_split)):
+                    if jj == pp:
+                        fresh_split[jj] *= PU[pp][2] / s
+                        m.append(fresh_split[jj])
+                        t.append(fresh_t)
+            # calcuate stream start and end temperature, enthalpy
+            t_start = mix_T(m, t)
+            t_end = PU[pp][0]
+            enl = (t_start - t_end) * PU[pp][2] * water_capacity
+            stream = [t_start, t_end, enl, 0]
+            if t_start > t_end:
+                hot.append(stream)
+            if t_start < t_end:
+                cold.append(stream)
+        pop_stream.append([hot,cold])
+        pop.append([fresh_split,PU_split])
+        global_cost, structure, global_eada_struct=GA(hot,cold)
+        fit.append
+    for iterate in range(its):
 
-def GA(mut=0.2,crossp=0.7,popsize=10,its_GA=200):
+
+
+def GA(hot,cold,mut=0.2,crossp=0.7,popsize=10,its_GA=200):
     pr=[]
     global_fitness=0
     pop=[]#no level discrimination
@@ -177,7 +196,7 @@ def GA(mut=0.2,crossp=0.7,popsize=10,its_GA=200):
         pr.append((10 ** 10) / global_fitness)
     plt.plot(pr)
     plt.show()
-    return (10 ** 10)/global_fitness,structure,global_eada_struct
+    return global_fitness,structure,global_eada_struct
 def EADA(structure_info, mut=0.8, crossp=0.7, popsize=100, its=10):
     pop = []
     fitness=[]
@@ -772,7 +791,6 @@ def mix_T(m,t):
     else:
         aaaaa,bbbbb=mix_T(m[1:],t[1:])
         return (m[0]*t[0]+aaaaa*bbbbb)/(m[0]+aaaaa)
-
 def restrict():
     return 1
 
@@ -780,8 +798,7 @@ def restrict():
 
 
 ###main part
-hot=copy.deepcopy(hot_origin)
-cold=copy.deepcopy(cold_origin)
+
 for flow in hot:
     a=float(flow[0])
     b=float(flow[1])
