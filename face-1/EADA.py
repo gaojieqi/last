@@ -8,8 +8,9 @@ import copy
 Ns=2#level count
 Nh=2#hot count
 Nc=2#cold count
+PU_count=4#process count
+Wast_water_count=1#water network output count
 delta_T=10#pinch temperature
-population=5
 a_cost=49000#fix capital
 b_cost=2520#
 c_cost=0.8#power efficient
@@ -18,32 +19,63 @@ t_cost=20#operational interval
 c_hu=28000#cost of hot_utility
 c_cu=30000#cost of cold_utility
 decay_rate=0.6#parameter of repair operator
-heat_coe=750#heat coefficiency
-CF=0.8#coefficient in EADA
+heat_coe=1000#heat coefficiency
+CF=0.05#coefficient in EADA
+upper_range=0.1#Top generation chozen in eade
+lower_range=0.7#Worest generaton chozen in eade
+selection_rate=0.99#selection of each iteration in eade
+factor=2000000/(3.6*24)#transform productivity to KW
+water_capacity=4.3#specia heat capacity for water
 
-hot=[[100,70,300,0,[0.3,0.4]],[140,50,500,0,[0.25,0.44]]]
-cold=[[15,30,500,0,[0.55,0.66]],[10,35,300,0,[0.77,0.88]]]
 
-for flow in hot:
-    a=float(flow[0])
-    b=float(flow[1])
-    c=float(flow[2])
-    flow[3]=round(c/(a-b),2)
-for flow in cold:
-    a = float(flow[1])
-    b = float(flow[0])
-    c = float(flow[2])
-    flow[3] = round(c/(a-b), 2)
-cold_duty_max = []
-hot_duty_max = []
-for jj in range(Nh):
-    cold_duty_max.append(0)
-#Outter iteration
-def GA(mut=0.8,crossp=0.7,popsize=20,its_GA=5,its_EADA=10):
-    global_fitness=10000000000000000
+
+hot_origin=[[100,70,300,0,[0.3,0.4]],[140,50,500,0,[0.25,0.44]]]
+cold_origin=[[15,30,500,0,[0.55,0.66]],[10,35,300,0,[0.77,0.88]]]
+PU=[[60,60,35],[70,60,40],[40,60,30],[70,60,45]]#[inlet_temperature, outlet_temperature, mass_quantity]
+
+
+
+def water_network(its=10):
+    #initialize
+    fresh_water=100
+    fresh_split=split(fresh_water,PU_count)
+    #mass split
+    PU_split=[]
+    for pp in range(len(PU)):
+        tt=PU[pp][2]
+        #TODO connections need to be restrict
+        ttt=split(tt,PU_count+Wast_water_count)
+        PU_split.append(ttt)
+    #PU_MIX records temperature
+    PU_MIX=[]
+    for pp in range(len(PU)):
+        s=0
+        for jj in range(len(PU_split)):
+            for ii in range(len(PU_split[jj])):
+                if ii ==pp:
+                    s+=PU_split[jj][ii]
+        for jj in range(len(fresh_split)):
+            if jj==pp:
+                s+=fresh_split[jj]
+                break
+        if s!=PU[pp][2]:
+            for jj in range(len(PU_split)):
+                for ii in range(len(PU_split[jj])):
+                    if ii ==pp:
+                        PU_split[jj][ii]*=PU[pp][2]/s
+            for jj in range(len(fresh_split)):
+                if jj==pp:
+                    fresh_split[jj]*=PU[pp][2]/s
+        PU_MIX.append()
+
+def GA(mut=0.2,crossp=0.7,popsize=10,its_GA=200):
+    pr=[]
+    global_fitness=0
     pop=[]#no level discrimination
     pop_level=[]#level discrimination
-    for ii in range(population):
+    structure=0
+    global_eada_struct=0
+    for ii in range(popsize):
         pop_unit_level=[]
         pop_unit = []
         for kk in range(Ns):
@@ -63,10 +95,9 @@ def GA(mut=0.8,crossp=0.7,popsize=20,its_GA=5,its_EADA=10):
     fitness=[]
     eada_struct = []
     for ii in range(popsize):
-        structure_eada, fttt = EADA(pop[ii], mut=0.8, crossp=0.7, popsize=3, its=its_EADA)
+        structure_eada, fttt = EADA(pop[ii])
         fitness.append(fttt)
         eada_struct.append(structure_eada) #return fitness, len(fitness)==popsize
-
     #GA iteration
     for kkk in range(its_GA):
         # generate probabilities
@@ -79,52 +110,66 @@ def GA(mut=0.8,crossp=0.7,popsize=20,its_GA=5,its_EADA=10):
             for iii in range(0,ii+1):
                 sumation+=probability[iii]
             pro_range.append(sumation)
+        # generate children
+        tag = []
         # generate parents
         parent = []
-        for jj in range(popsize):
-            point_pa=random.random()
+        for jj in range(2):
+            point_pa = random.random()
             for jjj in range(popsize):
-                if point_pa>pro_range[jjj] and point_pa<pro_range[jjj+1]:
+                if point_pa > pro_range[jjj] and point_pa < pro_range[jjj + 1]:
                     parent.append(pop[jjj])
+                    tag.append(jjj)
                     break
 
-        # generate children
-        children = []
-        for ii in range(popsize):#each iteration only generate one children
-            # 1.cross
-            parent_a = parent[random.randrange(0, popsize, 1)]
-            parent_b = parent[random.randrange(0, popsize, 1)]
-            if random.random() < crossp:
-                point_a = random.randrange(0, Nh * Nc * Ns - 1, 1)
-                point_b = random.randrange(point_a + 1, Nh * Nc * Ns, 1)
-                for iii in range(point_b - point_a):
-                    parent_a[point_a + iii] = parent_b[point_a + iii]
-            # 2.mutation
-            for iii in range(Nh * Nc * Ns):
-                if random.random() < mut:
-                    parent_a[iii] = 1 - parent_a[iii]
-            # replace parent with children
-            children.append(parent_a)
-        #evaluate children
-        fitness=[]
-        eada_struct=[]
-        for ii in range(popsize):
-            structure_eada,fttt=EADA(children[ii], mut=0.8, crossp=0.7, popsize=3, its=2)
-            fitness.append(fttt)
-            eada_struct.append(structure_eada)
+        # 1.cross
+        parent_a = parent[0]
+        parent_b = parent[1]
+        if random.random() < crossp:
+            point_a = random.randrange(0, Nh * Nc * Ns - 1, 1)
+            point_b = random.randrange(point_a + 1, Nh * Nc * Ns, 1)
+            for iii in range(point_b - point_a):
+                kkkkk = parent_b[point_a + iii]
+                parent_b[point_a + iii] = parent_a[point_a + iii]
+                parent_a[point_a + iii] = kkkkk
+        # 2.mutation
+        for iii in range(Nh * Nc * Ns):
+            if random.random() < mut:
+                parent_a[iii] = 1 - parent_a[iii]
+            if random.random() < mut:
+                parent_b[iii] = 1 - parent_b[iii]
+        # 3.repaie constrains
+        for iii in range(Nh*Nc*Ns):
+            if parent_a[iii]==1:
+                iiii=int((iii%Ns)/Nc)
+                jjjj=((iii%Ns)%Nc)-1
+                if cold[iiii][0]+delta_T>hot[jjjj][1] or cold[iiii][1]+delta_T>hot[jjjj][0]:
+                    parent_a[iii]=0
+            if parent_b[iii]==1:
+                iiii = int((iii % Ns) / Nc)
+                jjjj = ((iii % Ns) % Nc) - 1
+                if cold[iiii][0] + delta_T > hot[jjjj][1] or cold[iiii][1] + delta_T > hot[jjjj][0]:
+                    parent_b[iii] = 0
+        #change parents
+        pop[tag[0]] = parent_a
+        pop[tag[1]] = parent_b
+        str_a,f_a=EADA(parent_a)
+        str_b,f_b=EADA(parent_b)
+        fitness[tag[0]]=f_a
+        fitness[tag[1]]=f_b
+        eada_struct[tag[0]]=str_a
+        eada_struct[tag[1]]=str_b
         #find global fitness, structure and split
-        for iiii in range(fitness):
-            if fitness[iiii]<global_fitness:
+        for iiii in range(len(fitness)):
+            if fitness[iiii]>global_fitness:
                 global_fitness=fitness[iiii]
-                structure=children[ii]
+                structure=pop[iiii]
                 global_eada_struct=eada_struct[iiii]
-
-    return global_fitness,structure,global_eada_struct
-
-
-#inner iteration
-def EADA(structure_info, mut=0.8, crossp=0.7, popsize=10, its=5):
-    pr=[]
+        pr.append((10 ** 10) / global_fitness)
+    plt.plot(pr)
+    plt.show()
+    return (10 ** 10)/global_fitness,structure,global_eada_struct
+def EADA(structure_info, mut=0.8, crossp=0.7, popsize=100, its=10):
     pop = []
     fitness=[]
     best_fitness=0
@@ -280,54 +325,21 @@ def EADA(structure_info, mut=0.8, crossp=0.7, popsize=10, its=5):
         #add to fitness
         fit_unit=fobj(T,split,structure_info,heat_load,cold_utility,hot_utility)
         #insert to pop and sort
-        if len(fitness)==0:
-            fitness.append(fit_unit)
-        if len(fitness) == 1:
-            if fit_unit > fitness[0]:
-                fitness=[fit_unit,fitness[0]]
-            else:
-                fitness.append(fit_unit)
-        if len(fitness)>=2:
-            if fit_unit > fitness[0]:
-                fitness = change(fitness, fit_unit, 0)
-                # convert to genetic code
-                gen = []
-                gen = gen + [split] + [heat_load] + [cold_utility]  # code components
-                pop = change(pop, gen, 0)
-            else:
-                for qwer in range(len(fitness)):
-                    if qwer < len(fitness) - 1:
-                        if fit_unit < fitness[qwer] and fit_unit > fitness[qwer + 1]:
-                            fitness = change(fitness, fit_unit, qwer+1)
-                            # convert to genetic code
-                            gen = []
-                            gen = gen + [split] + [heat_load] + [cold_utility]  # code components
-                            pop = change(pop, gen, qwer)
-                            break
-                    if qwer == len(fitness)-1:
-                        fitness.append(fit_unit)
-                        # convert to genetic code
-                        gen = []
-                        gen = gen + [split] + [heat_load] + [cold_utility]  # code components
-                        pop = change(pop, gen, qwer)
+        # convert to genetic code
+        gen = []
+        gen = gen + [split] + [heat_load] + [cold_utility]+[fit_unit]  # code components
+        pop .append(gen)
+        pop.sort(key=lambda x:x[3],reverse=True)
     for asdf in range(its):
-        ssssss=0
         for ppppp in range(popsize):
-            ssssss+=fitness[ppppp]
-        probability=[]
-        for ppppp in range(popsize):
-            probability.append(float(fitness[ppppp])/ssssss)
-        pro_range = [0]
-        for ii in range(popsize):
-            sumation = 0
-            for iii in range(0, ii + 1):
-                sumation += probability[iii]
-            pro_range.append(sumation)
-        for ppppp in range(popsize):
+            #check whether popsize is enough
+            if int(popsize * upper_range) == 0 or int(popsize * upper_range) == int(popsize * lower_range):
+                print('Not enough popsize')
+                break
             # let pb be the better one, find the right direction
-            point_pa=random.randrange(int(popsize/10),int(popsize/90),1)
+            point_pa=random.randrange(int(popsize*upper_range),int(popsize*lower_range),1)
             pa = copy.deepcopy(pop[point_pa])
-            point_pb=random.randrange(0,int(popsize/10),1)
+            point_pb=random.randrange(0,int(popsize*upper_range),1)
             pb = copy.deepcopy(pop[point_pb])
             buf_pa=getnewList(pa)
             buf_pb=getnewList(pb)
@@ -340,6 +352,8 @@ def EADA(structure_info, mut=0.8, crossp=0.7, popsize=10, its=5):
             diff_buf=[]
             for mmmmm in range(len(differ)):
                 diff_buf.append(differ[mmmmm]+buf_pop[mmmmm])
+            #ignore the effect on fitness
+            diff_buf[3]=0
             pop[ppppp]=copy.deepcopy(diff_buf)
             #repair split
             for kk in range(Ns):
@@ -392,45 +406,19 @@ def EADA(structure_info, mut=0.8, crossp=0.7, popsize=10, its=5):
                 continue#skip it's fitness calculation
             hot_u=hot_u_fun(structure_info,pop[ppppp][1])
             fit_unit=fobj(T__,pop[ppppp][0],structure_info,pop[ppppp][1],pop[ppppp][2],hot_u)
+            pop[ppppp][3]=fit_unit
             # insert to pop and sort
-            if len(fitness) == 0:
-                fitness.append(fit_unit)
-            if len(fitness) == 1:
-                if fit_unit > fitness[0]:
-                    fitness = [fit_unit, fitness[0]]
-                else:
-                    fitness.append(fit_unit)
-            if len(fitness) >= 2:
-                if fit_unit > fitness[0]:
-                    fitness = change(fitness, fit_unit, 0)
-                    # change pop
-                    total_buf=pop[ppppp]
-                    pop=abandon_fun(pop,ppppp)
-                    pop = change(pop, total_buf, 0)
-                else:
-                    for qwer in range(len(fitness)):
-                        if qwer < len(fitness) - 1:
-                            if fit_unit < fitness[qwer] and fit_unit > fitness[qwer + 1]:
-                                fitness = change(fitness, fit_unit, qwer + 1)
-                        if qwer == len(fitness) - 1:
-                            fitness.append(fit_unit)
-                        # change pop
-                        total_buf = pop[ppppp]
-                        pop = abandon_fun(pop, ppppp)
-                        pop = change(pop, total_buf, qwer)
-                        break
+            pop.sort(key=lambda x: x[3], reverse=True)
             #find the best one
             if fit_unit>best_fitness:
                 record=[T__,pop[ppppp][0],structure_info,pop[ppppp][1],pop[ppppp][2],hot_u]
                 best_fitness=fit_unit
             else:
                 record=1#nonsense
-            pr.append((10**10)/fit_unit)
+        pop=select(pop)
+        popsize=len(pop)
     print ('abandon record:',abandon_record)
-    plt.plot(pr)
-    plt.show()
-    return record,(10**10)/best_fitness
-
+    return record,best_fitness
 def hot_u_fun(structure_info,heat_load):
     love = []
     hot_utility=[]
@@ -686,7 +674,8 @@ def fobj(T,split,structure_info,heat_load,cold_utility,hot_utility):
                     if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
                         delta_hot=T[kk][3][jj]-T[kk][2][ii]
                         delta_cold=T[kk][1][jj]-T[kk][0][ii]
-                        A=heat_load[kk][ii]*split[kk][ii][jj]/float(heat_coe*delta_T_fun(delta_hot,delta_cold))
+                        A=factor*heat_load[kk][ii]*split[kk][ii][jj]/float(1*delta_T_fun(delta_hot,delta_cold))
+                        n = int(A / 100)
                         c_capital+=(a_cost+b_cost*(A))*1.5/20
         if kk==Ns-1:
             for jj in range(Nh):
@@ -694,8 +683,9 @@ def fobj(T,split,structure_info,heat_load,cold_utility,hot_utility):
                     if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
                         delta_hot = T[kk][3][jj] - T[kk][2][ii]
                         delta_cold = T[kk][1][jj] - T[kk][0][ii]
-                        A = heat_load[kk][jj] * split[kk][jj][ii] / float(heat_coe * delta_T_fun(delta_hot, delta_cold))
-                        c_capital += (a_cost + b_cost * (A ))*1.5 /20
+                        A = factor*heat_load[kk][jj] * split[kk][jj][ii] / float(1 * delta_T_fun(delta_hot, delta_cold))
+                        n=int(A/100)
+                        c_capital += (n*a_cost + b_cost * (A ))*1.5 /20
     #utility cost
     #TODO set different cost of utility according to their qualities
     for jj in range(Nh):
@@ -706,10 +696,10 @@ def fobj(T,split,structure_info,heat_load,cold_utility,hot_utility):
     c_global=c_energy+c_capital
     return 10**10/float(c_global)
 def delta_T_fun(delta_hot,delta_cold):
-    if delta_hot>1.7*delta_cold:
-        result = (delta_hot - delta_cold) / (math.log(delta_hot) - math.log(delta_cold))
-    else:
-        result= (delta_hot + delta_cold) / 2
+    # if delta_hot>1.7*delta_cold:
+    #     result = (delta_hot - delta_cold) / (math.log(delta_hot) - math.log(delta_cold))
+    # else:
+    result= (delta_hot + delta_cold) / 2
     result=abs(result)
     return round(result,2)
 def getnewList(newlist):
@@ -734,7 +724,7 @@ def mutation(newarray,mut):
     return d
 def change(fitness,fit_unit,qwer):
     d=[]
-    for i in range(qwer):
+    for i in range(qwer+1):
         d.append(fitness[i])
     d.append(fit_unit)
     for i in range(qwer,len(fitness)):
@@ -746,6 +736,58 @@ def abandon_fun(pop,ppppp):
         if i!=pop:
             d.append(pop[i])
     return d
+def select(pop):
+    li=int(len(pop)*selection_rate)
+    d=[]
+    for i in range(li):
+        d.append(pop[i])
+    return d
+def split(total,num):
+    s_buf = [0]
+    for pp in range(num - 1):
+        flag = 1
+        while flag == 1:
+            aaaaaa = random.randrange(1, total, 1)
+            if aaaaaa not in s_buf:
+                s_buf.append(random.randrange())
+                flag = 0
+    s_buf.sort()
+    s_buf.append(total)
+    split_ = []
+    for pp in range(PU_count):
+        split_.append(s_buf[pp + 1] - s_buf[pp])
+    return split_
+def mix_T(m1,t1,m2,t2):
+    return (m2*t2+m1*t1)/(m1+m2)
 
-re,fit=EADA(structure_info=[1,1,1,0,1,0,1,1])
-print (fit)
+def restrict():
+    return 1
+
+
+
+
+###main part
+hot=copy.deepcopy(hot_origin)
+cold=copy.deepcopy(cold_origin)
+for flow in hot:
+    a=float(flow[0])
+    b=float(flow[1])
+    c=float(flow[2])
+    flow[3]=round(c/(a-b),2)
+for flow in cold:
+    a = float(flow[1])
+    b = float(flow[0])
+    c = float(flow[2])
+    flow[3] = round(c/(a-b), 2)
+cold_duty_max = []
+hot_duty_max = []
+for jj in range(Nh):
+    cold_duty_max.append(0)
+
+
+
+
+
+
+global_cost,structure,global_eada_struct=GA()
+print (global_cost)
