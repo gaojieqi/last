@@ -22,6 +22,7 @@ c_cu=30000#cost of cold_utility
 decay_rate=0.6#parameter of repair operator
 heat_coe=1000#heat coefficiency
 CF=0.05#coefficient in EADA
+CF_=0.1#coefficienct in water network
 upper_range=0.1#Top generation chozen in eade
 lower_range=0.7#Worest generaton chozen in eade
 selection_rate=0.99#selection of each iteration in eade
@@ -39,6 +40,7 @@ def water_network(popsize=10,its=10):
     #initialize
     fresh_water=100
     fresh_split=split(fresh_water,PU_count)
+    global_fit=0
     #mass split
     PU_split=[]
     for pp in range(len(PU)):
@@ -49,12 +51,12 @@ def water_network(popsize=10,its=10):
     #initalize EADE pop
     pop_stream=[]
     pop=[]
-    fit=[]
     for qqqqq in range(popsize):
         # copy stream flow
         hot = copy.deepcopy(hot_origin)
         cold = copy.deepcopy(cold_origin)
         # calculate stream information and add to hot/cold
+        #TODO needs to add connenction restriction
         for pp in range(len(PU)):
             s = 0
             m = []
@@ -88,11 +90,52 @@ def water_network(popsize=10,its=10):
                 hot.append(stream)
             if t_start < t_end:
                 cold.append(stream)
-        pop_stream.append([hot,cold])
-        pop.append([fresh_split,PU_split])
-        global_cost, structure, global_eada_struct=GA(hot,cold)
-        fit.append
+        fit, structure, global_eada_struct = GA(hot, cold)
+        pop_stream.append([hot, cold,fit])
+        pop.append([fresh_split,PU_split,fit])
+    pop.sort(key=lambda x: x[2], reverse=True)
+    pop_stream.sort(key=lambda x: x[2], reverse=True)
+    if int(popsize/10)==0:
+        print('Water network: Not enough popsize')
+        return 0
     for iterate in range(its):
+        for pppppp in range(popsize):
+            point_a = random.randrange(0, int(popsize / 10), 1)
+            point_b = random.randrange(popsize - int(popsize / 10), popsize, 1)
+            par_a_stream = pop_stream[point_a]
+            par_b_stream = pop_stream[point_b]
+            par_a = pop[point_a]
+            par_b = pop[point_b]
+            diff = []
+            buf_a = getnewList(par_a)
+            buf_b = getnewList(par_b)
+            for mm in range(len(buf_a)):
+                diff.append(CF_ * (buf_a[mm] - buf_b[mm]))
+            diff = mutation(diff)
+            bbb = pop[pppppp]
+            dif_bu=[]
+            for mm in range(len(diff)):
+                dif_bu.append(bbb[mm]+diff[mm])
+
+            fit, structure, global_eada_struct = GA(dif_bu[0], dif_bu[1])
+            pop_stream[pppppp][0]=dif_bu[0]
+            pop_stream[pppppp][1]=dif_bu[1]
+            pop_stream[pppppp][2]=fit
+            #TODO needs to add connections restrictions
+            pop.sort(key=lambda x: x[2], reverse=True)
+            pop_stream.sort(key=lambda x: x[2], reverse=True)
+            if fit>global_fit:
+                global_fit=fit
+                global_structure=[]
+                global_water_split=[]
+        #eliminate unsuitable units
+        pop=select(pop)
+        pop_stream=select(pop_stream)
+        popsize=len(pop)
+    return 10**10/global_fit,global_structure,global_water_split
+
+
+
 
 
 
@@ -123,7 +166,7 @@ def GA(hot,cold,mut=0.2,crossp=0.7,popsize=10,its_GA=200):
     fitness=[]
     eada_struct = []
     for ii in range(popsize):
-        structure_eada, fttt = EADA(pop[ii])
+        structure_eada, fttt = EADA(hot,cold,pop[ii])
         fitness.append(fttt)
         eada_struct.append(structure_eada) #return fitness, len(fitness)==popsize
     #GA iteration
@@ -181,8 +224,8 @@ def GA(hot,cold,mut=0.2,crossp=0.7,popsize=10,its_GA=200):
         #change parents
         pop[tag[0]] = parent_a
         pop[tag[1]] = parent_b
-        str_a,f_a=EADA(parent_a)
-        str_b,f_b=EADA(parent_b)
+        str_a,f_a=EADA(hot,cold,parent_a)
+        str_b,f_b=EADA(hot,cold,parent_b)
         fitness[tag[0]]=f_a
         fitness[tag[1]]=f_b
         eada_struct[tag[0]]=str_a
@@ -197,7 +240,7 @@ def GA(hot,cold,mut=0.2,crossp=0.7,popsize=10,its_GA=200):
     plt.plot(pr)
     plt.show()
     return global_fitness,structure,global_eada_struct
-def EADA(structure_info, mut=0.8, crossp=0.7, popsize=100, its=10):
+def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=100, its=10):
     pop = []
     fitness=[]
     best_fitness=0
@@ -443,6 +486,7 @@ def EADA(structure_info, mut=0.8, crossp=0.7, popsize=100, its=10):
                 best_fitness=fit_unit
             else:
                 record=1#nonsense
+        #eliminate unsuitable units
         pop=select(pop)
         popsize=len(pop)
     print ('abandon record:',abandon_record)
@@ -791,6 +835,10 @@ def mix_T(m,t):
     else:
         aaaaa,bbbbb=mix_T(m[1:],t[1:])
         return (m[0]*t[0]+aaaaa*bbbbb)/(m[0]+aaaaa)
+def gen_hot_cold():
+
+
+
 def restrict():
     return 1
 
