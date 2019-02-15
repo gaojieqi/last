@@ -6,61 +6,66 @@ import copy
 
 
 Ns=2#level count
-Nh=2#hot count
-Nc=2#cold count
-PU_count=4#process count
-Waste_water_count=1#water network output count
-fresh_t=10
+
+
 delta_T=10#pinch temperature
-a_cost=49000#fix capital
-b_cost=2520#
+a_cost=49000#fix capital(CNY)
+b_cost=2520#(CNY)
 c_cost=0.8#power efficient
 i_cost=0.1#interest rate
-t_cost=20#operational interval
-c_hu=28000#cost of hot_utility
-c_cu=30000#cost of cold_utility
+t_cost=20#operational interval(year)
+c_hu=28#cost of hot_utility(CNY/GJ)
+c_cu=10#cost of cold_utility(CNY/GJ)
 decay_rate=0.6#parameter of repair operator
-heat_coe=1000#heat coefficiency
+heat_coe=1000#heat coefficiency-----W/(K*m^2)
+day_adt=2000#ADt per day
+
 CF=0.05#coefficient in EADA
 CF_=0.1#coefficienct in water network
 upper_range=0.1#Top generation chozen in eade
 lower_range=0.7#Worest generaton chozen in eade
 selection_rate=0.99#selection of each iteration in eade
-factor=2000000/(3.6*24)#transform productivity to KW
-water_capacity=4.2#specia heat capacity for water(MJ)
+factor=2000/(3600*24)#scale to energy consumption in second
+
+water_capacity=4.2#specia heat capacity for water(MJ/ton)
+p_fresh=3.4#price of fresh water(RMB/ton)
+PU_count=5#process count
+waste_water_count=1#water network output count
+fresh_t=15#fresh water temperature
+waste_t=30#waste water temperature
 
 
 
-hot_origin=[[100,70,300,0],[140,50,500,0]]#[inlet_temperature, outlet_temperature,enthalpy,k]
-cold_origin=[[15,30,500,0],[10,35,300,0]]
-PU=[[60,66,35],[70,60,40],[40,60,30],[70,60,45]]#[inlet_temperature, outlet_temperature, mass_quantity(tone)]
-
+hot_origin=[[1600,70,0.26,0],[120,90,0.12,0],[900,160,0.18,0],[850,120,2.9,0],[454,148,0.75,0],[600,250,0.6,0],[600,250,0.25,0],[105,93,0.25,0],[128,120,0.78,0],[109,107,0.65,0]]#[inlet_temperature, outlet_temperature,enthalpy(GJ),k]
+cold_origin=[[250,600,0.6,0],[148,600,1,0],[120,540,0.14,0],[25,110,0.09,0],[120,151,2.8,0],[10,120,1,0],[85,165,0.6,0],[120,201,0.3,0],[95,124,0.1,0]]
+PU=[[15,62,0.7],[15,60,4.2],[15,70,10],[15,50,6.5],[15,60,0.7]]#[inlet_temperature, outlet_temperature, mass_quantity(tone)]
+index=[[0,0,1,0,0,1],[0,0,0,0,0,1],[0,0,0,0,0,1],[0,1,0,0,0,1],[1,1,1,1,1,1]]#index::1-wood preparation;2-washing;3-bleaching;4-pulp machine;5-black liquor evaporation;6-sewer
 
 def water_network(popsize=10,its=10):
     #initialize
-    fresh_water=0
-    fresh_split=split(fresh_water,PU_count)
+    pr=[]
     global_fit=0
     global_structure = []
     global_water_split = []
     #mass split
     PU_split=[]
-    for pp in range(len(PU)):
+    for pp in range(PU_count):
         tt=PU[pp][2]
-        #TODO connections need to be restrict
-        ttt=split(tt,PU_count+Waste_water_count)
+        ttt=split(tt,pp)
         PU_split.append(ttt)
+    PU_split,fresh_split=check_water_split(PU_split)
     #initalize EADE pop
-    pop_stream=[]
     pop=[]
     for qqqqq in range(popsize):
         # calculate stream information and add to hot/cold
         hot,cold=gen_hot_cold(PU_split,fresh_split)
         fit, structure, global_eada_struct = GA(hot, cold)
-        pop_stream.append([hot, cold,fit])
-        pop.append([fresh_split,PU_split,fit])
-    pop.sort(key=lambda x: x[2], reverse=True)
-    pop_stream.sort(key=lambda x: x[2], reverse=True)
+        #add cost of fresh water
+        co=(10 ** 10) /fit
+        co+=sum(fresh_split)*p_fresh
+        fit=(10 ** 10) /co
+        pop.append([PU_split,fit])
+    pop.sort(key=lambda x: x[1], reverse=True)
     if int(popsize/10)==0:
         print('Water network: Not enough popsize')
         return 0
@@ -80,27 +85,42 @@ def water_network(popsize=10,its=10):
             dif_bu=[]
             for mm in range(len(diff)):
                 dif_bu.append(bbb[mm]+diff[mm])
-            #TODO make sure that all splits are legal
-            dif_bu[1],dif_bu[0]=check_water_split(dif_bu[1],dif_bu[0],fresh_water)
-            hot, cold = gen_hot_cold(dif_bu[1], dif_bu[0])
+            dif_bu[0],fresh_split_=check_water_split(dif_bu[0])
+            hot, cold = gen_hot_cold(dif_bu[0], fresh_split_)
             fit, structure, global_eada_struct = GA(hot, cold)
-            pop_stream[pppppp][0]=dif_bu[0]
-            pop_stream[pppppp][1]=dif_bu[1]
-            pop_stream[pppppp][2]=fit
-            #TODO needs to add connections restrictions
+            # add cost of fresh water
+            co = (10 ** 10) / fit
+            co += sum(fresh_split_) * p_fresh
+            fit = (10 ** 10) / co
+            pop[pppppp][0]=dif_bu[0]
+            pop[pppppp][1] = fit
             pop.sort(key=lambda x: x[2], reverse=True)
-            pop_stream.sort(key=lambda x: x[2], reverse=True)
             if fit>global_fit:
                 global_fit=fit
                 global_structure=[structure,global_eada_struct]
-                global_water_split=[dif_bu[1], dif_bu[0]]
+                global_water_split=[dif_bu[0],fresh_split_]
         #eliminate unsuitable units
         pop=select(pop)
-        pop_stream=select(pop_stream)
         popsize=len(pop)
+        pr.append((10 ** 10) / global_fit)
+    plt.plot(pr)
+    plt.show()
     return 10**10/global_fit,global_structure,global_water_split
 def GA(hot,cold,mut=0.2,crossp=0.7,popsize=10,its_GA=200):
-    pr=[]
+    #add slop
+    for flow in range(len(hot)):
+        a = float(hot[flow][0])
+        b = float(hot[flow][1])
+        c = float(hot[flow][2])
+        hot[flow][3] = c / (a - b)
+    for flow in range(len(cold)):
+        a = float(cold[flow][0])
+        b = float(cold[flow][1])
+        c = float(cold[flow][2])
+        cold[flow][3] = c / (a - b)
+    #initialize
+    Nh=len(hot)
+    Nc=len(cold)
     global_fitness=0
     pop=[]#no level discrimination
     pop_level=[]#level discrimination
@@ -196,11 +216,10 @@ def GA(hot,cold,mut=0.2,crossp=0.7,popsize=10,its_GA=200):
                 global_fitness=fitness[iiii]
                 structure=pop[iiii]
                 global_eada_struct=eada_struct[iiii]
-        pr.append((10 ** 10) / global_fitness)
-    plt.plot(pr)
-    plt.show()
     return global_fitness,structure,global_eada_struct
 def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=100, its=10):
+    Nh=len(hot)
+    Nc=len(cold)
     pop = []
     fitness=[]
     best_fitness=0
@@ -238,10 +257,16 @@ def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=100, its=10):
         heat_load_split = []
 
         for kk in range(Ns):
-            hl = []
-            for ii in range(Nc):
-                hl.append(0)
-            heat_load.append(hl)
+            if kk!=Ns-1:
+                hl = []
+                for ii in range(Nc):
+                    hl.append(0)
+                heat_load.append(hl)
+            if kk==Ns-1:
+                hl = []
+                for ii in range(Nh):
+                    hl.append(0)
+                heat_load.append(hl)
         for kk in range(Ns):
             hl = []
             for ii in range(Nc):
@@ -273,14 +298,14 @@ def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=100, its=10):
                     if flag_ini == 1:
                         if temp_max>hot[jj][1]:
                             llll = temp_max - hot[jj][1]
-                            cold_utility.append(random.randrange(int(float(llll) * hot[jj][3]), int(hot[jj][2]), 1))
+                            cold_utility.append(ran(float(llll) * hot[jj][3],hot[jj][2]))
                             T[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
                         if temp_max<=hot[jj][1]:
-                            cold_utility.append(random.randrange(0, int(hot[jj][2]), 1))
+                            cold_utility.append(ran(0,hot[jj][2]))
                             T[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
                     if flag_ini == 0:
                         tab[jj] = 1  # mark stream with no heat exchange in k level
-                        cold_utility.append(random.randrange(0, int(hot[jj][2]), 1))
+                        cold_utility.append(ran(0,hot[jj][2]))
                         T[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
                         T[kk][3][jj] = T[kk][1][jj]
             if kk != Ns - 1:
@@ -347,14 +372,14 @@ def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=100, its=10):
                             kklljj+=(float(heat_load[kk][ii] * split[kk][ii][jj]) / hot[jj][3])
                     T[kk][3][jj] =T[kk][1][jj]+kklljj
         #repair
-        T, heat_load, cold_utility,abandon = repair(T, split, structure_info, heat_load, cold_utility)
+        T, heat_load, cold_utility,abandon = repair(hot,cold,T, split, structure_info, heat_load, cold_utility)
         if abandon==1:
             popsize-=1#generate a new one
             abandon_record+=1
             continue
-        hot_utility=hot_u_fun(structure_info,heat_load)
+        hot_utility=hot_u_fun(hot,cold,structure_info,heat_load)
         #add to fitness
-        fit_unit=fobj(T,split,structure_info,heat_load,cold_utility,hot_utility)
+        fit_unit=fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility)
         #insert to pop and sort
         # convert to genetic code
         gen = []
@@ -427,16 +452,16 @@ def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=100, its=10):
                 if pop[ppppp][2][jj]<0:
                     pop[ppppp][2][jj]=0
             #recalculate temperature
-            T__=recalculate_T(structure_info,pop[ppppp][2],pop[ppppp][1],pop[ppppp][0])
+            T__=recalculate_T(hot,cold,structure_info,pop[ppppp][2],pop[ppppp][1],pop[ppppp][0])
             #repair all
-            T__, pop[ppppp][1], pop[ppppp][2],abandon = repair(T__, pop[ppppp][0], structure_info, pop[ppppp][1], pop[ppppp][2])
+            T__, pop[ppppp][1], pop[ppppp][2],abandon = repair(hot,cold,T__, pop[ppppp][0], structure_info, pop[ppppp][1], pop[ppppp][2])
             if abandon==1:
                 abandon_record+=1
                 popsize-=1
                 pop=abandon_fun(pop,ppppp)
                 continue#skip it's fitness calculation
-            hot_u=hot_u_fun(structure_info,pop[ppppp][1])
-            fit_unit=fobj(T__,pop[ppppp][0],structure_info,pop[ppppp][1],pop[ppppp][2],hot_u)
+            hot_u=hot_u_fun(hot,cold,structure_info,pop[ppppp][1])
+            fit_unit=fobj(hot,cold,T__,pop[ppppp][0],structure_info,pop[ppppp][1],pop[ppppp][2],hot_u)
             pop[ppppp][3]=fit_unit
             # insert to pop and sort
             pop.sort(key=lambda x: x[3], reverse=True)
@@ -451,7 +476,9 @@ def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=100, its=10):
         popsize=len(pop)
     print ('abandon record:',abandon_record)
     return record,best_fitness
-def hot_u_fun(structure_info,heat_load):
+def hot_u_fun(hot,cold,structure_info,heat_load):
+    Nh=len(hot)
+    Nc=len(cold)
     love = []
     hot_utility=[]
     for ii in range(Nc):
@@ -469,7 +496,9 @@ def hot_u_fun(structure_info,heat_load):
                 lkjlkj += copy.deepcopy(love[ii])
         hot_utility.append(cold[ii][2] - lkjlkj)
     return hot_utility
-def recalculate_T(structure_info,cold_utility,heat_load,split):
+def recalculate_T(hot,cold,structure_info,cold_utility,heat_load,split):
+    Nh=len(hot)
+    Nc=len(cold)
     T=[]
     for kk in range(Ns):
         T_=[]
@@ -559,7 +588,9 @@ def recalculate_T(structure_info,cold_utility,heat_load,split):
             T_.append(T__)
         T.append(T_)
     return T
-def repair(t,sp,structure_info,heat_load,cold_utility):
+def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
+    Nh=len(hot)
+    Nc=len(cold)
     global_stop=0
     count=0
     abandon=0
@@ -587,11 +618,10 @@ def repair(t,sp,structure_info,heat_load,cold_utility):
                                 if t[kk][1][jj] - delta_T < t[kk][0][ii] or t[kk][1][jj]>hot[jj][0] or t[kk][1][jj]<hot[jj][1]:
                                     if flag_ini == 1:
                                         llll = temp_max - hot[jj][1]
-                                        cold_utility[jj] = random.randrange(int(float(llll) * hot[jj][3]),
-                                                                            int(hot[jj][2]), 1)
+                                        cold_utility[jj] = ran(float(llll) * hot[jj][3],hot[jj][2])
                                         t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
                                     if flag_ini == 0:
-                                        cold_utility[jj] = random.randrange(0, int(hot[jj][2]), 1)
+                                        cold_utility[jj] = ran(0,hot[jj][2])
                                         t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
                                         t[kk][3][jj] = t[kk][1][jj]
                                     flag = 0
@@ -599,11 +629,10 @@ def repair(t,sp,structure_info,heat_load,cold_utility):
                         if t[kk][1][jj]>hot[jj][0] or t[kk][1][jj]<hot[jj][1]:
                             if flag_ini == 1:
                                 llll = temp_max - hot[jj][1]
-                                cold_utility[jj] = random.randrange(int(float(llll) * hot[jj][3]),
-                                                                    int(hot[jj][2]), 1)
+                                cold_utility[jj] = ran(float(llll) * hot[jj][3],hot[jj][2])
                                 t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
                             if flag_ini == 0:
-                                cold_utility[jj] = random.randrange(0, int(hot[jj][2]), 1)
+                                cold_utility[jj] = ran(0,hot[jj][2])
                                 t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
                                 t[kk][3][jj] = t[kk][1][jj]
                     if count > limit:
@@ -663,8 +692,8 @@ def repair(t,sp,structure_info,heat_load,cold_utility):
                 while stop == 0:
                     count += 1
                     flag = 1
-                    for jj in range(Nc):
-                        for ii in range(Nh):
+                    for jj in range(Nh):
+                        for ii in range(Nc):
                             if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
                                 if t[kk][3][jj] - delta_T < t[kk][2][ii] or t[kk][2][ii]>cold[ii][1]:
                                     ll = (hot[jj][0] - t[kk][1][jj]) * (hot[jj][3])/2
@@ -694,7 +723,9 @@ def repair(t,sp,structure_info,heat_load,cold_utility):
         if global_flag==1:
             global_stop=1
     return t,heat_load,cold_utility,abandon
-def fobj(T,split,structure_info,heat_load,cold_utility,hot_utility):
+def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
+    Nh=len(hot)
+    Nc=len(cold)
     c_capital=0
     CU=0
     HU=0
@@ -708,7 +739,7 @@ def fobj(T,split,structure_info,heat_load,cold_utility,hot_utility):
                         delta_cold=T[kk][1][jj]-T[kk][0][ii]
                         A=factor*heat_load[kk][ii]*split[kk][ii][jj]/float(1*delta_T_fun(delta_hot,delta_cold))
                         n = int(A / 100)
-                        c_capital+=(a_cost+b_cost*(A))*1.5/20
+                        c_capital+=n*(a_cost+b_cost*(A))*1.5/(t_cost*day_adt*365)
         if kk==Ns-1:
             for jj in range(Nh):
                 for ii in range(Nc):
@@ -717,7 +748,7 @@ def fobj(T,split,structure_info,heat_load,cold_utility,hot_utility):
                         delta_cold = T[kk][1][jj] - T[kk][0][ii]
                         A = factor*heat_load[kk][jj] * split[kk][jj][ii] / float(1 * delta_T_fun(delta_hot, delta_cold))
                         n=int(A/100)
-                        c_capital += (n*a_cost + b_cost * (A ))*1.5 /20
+                        c_capital += n*(a_cost + b_cost * (A ))*1.5 /(t_cost*day_adt*365)
     #utility cost
     #TODO set different cost of utility according to their qualities
     for jj in range(Nh):
@@ -734,6 +765,13 @@ def delta_T_fun(delta_hot,delta_cold):
     result= (delta_hot + delta_cold) / 2
     result=abs(result)
     return round(result,2)
+def ran(start,end):
+    if end<=start:
+        print ("Random error")
+        return 0
+    dif=random.random()*(end-start)
+    result=start+dif
+    return result
 def getnewList(newlist):
     d = []
     for element in newlist:
@@ -774,72 +812,69 @@ def select(pop):
     for i in range(li):
         d.append(pop[i])
     return d
-def split(total,num):
+def split(total,ind):#index::1-wood preparation;2-washing;3-bleaching;4-pulp machine;5-black liquor evaporation
     s_buf = [0]
+    num=sum(index[ind])
     for pp in range(num - 1):
         flag = 1
         while flag == 1:
-            aaaaaa = random.randrange(1, total, 1)
+            aaaaaa = random.random()*total
             if aaaaaa not in s_buf:
-                s_buf.append(random.randrange())
+                s_buf.append(aaaaaa)
                 flag = 0
     s_buf.sort()
     s_buf.append(total)
     split_ = []
-    for pp in range(num):
-        split_.append(s_buf[pp + 1] - s_buf[pp])
+    ffff=0
+    for pp in range(PU_count+waste_water_count):
+        if index[ind][pp]==1:
+            split_.append(s_buf[ffff + 1] - s_buf[ffff])
+            ffff+=1
+        else:
+            split_.append(0)
     return split_
 def mix_T(m,t):
     if len(m)==1:
-        return m,t
+        return m[0],t[0]
     else:
         aaaaa,bbbbb=mix_T(m[1:],t[1:])
-        return (m[0]*t[0]+aaaaa*bbbbb)/(m[0]+aaaaa)
-def check_water_split(PU_split,fresh_split,fresh_water):
-    s=0
-    for mass in range(len(fresh_split)):
-        if fresh_split[mass]<0:
-            fresh_split[mass]=0
-        s+=fresh_split[mass]
-    for mass in range(len(fresh_split)):
-        fresh_split[mass]*=fresh_water/s
+        return sum(m),(m[0]*t[0]+aaaaa*bbbbb)/(m[0]+aaaaa)
+def check_water_split(PU_split):
+    fresh_split=[]
     for pp in range(len(PU_split)):
         s=0
-        for mass in range(len(PU_split[pp])):
-            if PU_split[pp][mass]<0:
-                PU_split[pp][mass]=0
-            s+=PU_split[pp][mass]
-        for mass in range(len(PU_split[pp])):
-            PU_split[pp][mass]*=PU[pp][2]/s
+        for ppp in range(len(PU_split)):
+            if PU_split[ppp][pp]<0:
+                PU_split[ppp][pp]=0
+            s+=PU_split[ppp][pp]
+        if s>=PU[pp][2]:
+            fresh_split.append(0)
+            for ppp in range(len(PU_split)):
+                PU_split[ppp][pp] *= PU[pp][2] / s
+        if s < PU[pp][2]:
+            fresh_split.append(PU[pp][2]-s)
     return PU_split,fresh_split
 def gen_hot_cold(PU_split,fresh_split):
     hot = copy.deepcopy(hot_origin)
     cold = copy.deepcopy(cold_origin)
+    m_wast = []
+    t_wast = []
     for pp in range(len(PU)):
         s = 0
         m = []
         t = []
         for jj in range(len(PU_split)):
-            for ii in range(len(PU_split[jj])):
-                if ii == pp:
-                    s += PU_split[jj][ii]
-        for jj in range(len(fresh_split)):
-            if jj == pp:
-                s += fresh_split[jj]
-                break
-        if s != PU[pp][2]:
-            for jj in range(len(PU_split)):
-                for ii in range(len(PU_split[jj])):
-                    if ii == pp:
-                        PU_split[jj][ii] *= PU[pp][2] / s
-                        m.append(PU_split[jj][ii])
-                        t.append(PU[jj][1])
-            for jj in range(len(fresh_split)):
-                if jj == pp:
-                    fresh_split[jj] *= PU[pp][2] / s
-                    m.append(fresh_split[jj])
-                    t.append(fresh_t)
-        t_start = mix_T(m, t)
+            s += PU_split[jj][pp]
+        s += fresh_split[pp]
+        for jj in range(len(PU_split)):
+            PU_split[jj][pp] *= PU[pp][2] / s
+            m.append(PU_split[jj][pp])
+            t.append(PU[jj][1])
+        fresh_split[pp] *= PU[pp][2] / s
+        m.append(fresh_split[pp])
+        t.append(fresh_t)
+        #calculate temperature of flow
+        m,t_start = mix_T(m, t)
         t_end = PU[pp][0]
         enl = (t_start - t_end) * PU[pp][2] * water_capacity
         stream = [t_start, t_end, enl, 0]
@@ -847,35 +882,31 @@ def gen_hot_cold(PU_split,fresh_split):
             hot.append(stream)
         if t_start < t_end:
             cold.append(stream)
+    for pp in range(PU_count):
+        s=0
+        for ppp in range(PU_count):
+           s+=PU_split[pp][ppp]
+        sewer_mass=PU[pp][2]-s
+        t_wast.append(PU[pp][1])
+        m_wast.append(sewer_mass)
+    #stream in sewer_waste
+    m,t_start=mix_T(m_wast,t_wast)
+    t_end=waste_t
+    enl = (t_start - t_end) * sum(m_wast) * water_capacity
+    stream = [t_start, t_end, enl, 0]
+    if t_start > t_end:
+        hot.append(stream)
+    if t_start < t_end:
+        cold.append(stream)
     return hot,cold
-def restrict():
-
-    return 1
-
-
 
 
 ###main part
 
-for flow in hot_origin:
-    a=float(flow[0])
-    b=float(flow[1])
-    c=float(flow[2])
-    flow[3]=round(c/(a-b),2)
-for flow in cold_origin:
-    a = float(flow[1])
-    b = float(flow[0])
-    c = float(flow[2])
-    flow[3] = round(c/(a-b), 2)
-cold_duty_max = []
-hot_duty_max = []
-for jj in range(Nh):
-    cold_duty_max.append(0)
 
 
 
 
 
-
-global_cost,structure,global_eada_struct=GA()
-print (global_cost)
+cost,structure,water_split=water_network()
+print (cost)
