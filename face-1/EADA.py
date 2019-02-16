@@ -218,7 +218,6 @@ def GA(hot,cold,mut=0.2,crossp=0.7,popsize=50,its_GA=1):
                 structure=pop[iiii]
                 global_eada_struct=eada_struct[iiii]
         pr.append((10 ** 10) / global_fitness)
-        print('----------GA iterate:', kkk)
     return global_fitness,structure,global_eada_struct
 def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=50, its=1):
     Nh=len(hot)
@@ -393,7 +392,7 @@ def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=50, its=1):
         for ppppp in range(popsize):
             #check whether popsize is enough
             if int(popsize * upper_range) == 0 or int(popsize * upper_range) == int(popsize * lower_range):
-                print('Not enough popsize')
+                print('EADE not enough popsize')
                 break
             # let pb be the better one, find the right direction
             point_pa=random.randrange(int(popsize*upper_range),int(popsize*lower_range),1)
@@ -766,7 +765,7 @@ def delta_T_fun(delta_hot,delta_cold):
     # else:
     result= (delta_hot + delta_cold) / 2
     result=abs(result)
-    return round(result,2)
+    return result
 def ran(start,end):
     if end<=start:
         print ("Random error")
