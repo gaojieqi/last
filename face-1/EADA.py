@@ -7,7 +7,6 @@ import copy
 
 Ns=2#level count
 
-
 delta_T=10#pinch temperature
 a_cost=49000#fix capital(CNY)
 b_cost=2520#(CNY)
@@ -41,7 +40,7 @@ cold_origin=[[250,600,0.6,0],[148,600,1,0],[120,540,0.14,0],[25,110,0.09,0],[120
 PU=[[15,62,0.7],[15,60,4.2],[15,70,10],[15,50,6.5],[15,60,0.7]]#[inlet_temperature, outlet_temperature, mass_quantity(tone)]
 index=[[0,0,1,0,0,1],[0,0,0,0,0,1],[0,0,0,0,0,1],[0,1,0,0,0,1],[1,1,1,1,1,1]]#index::1-wood preparation;2-washing;3-bleaching;4-pulp machine;5-black liquor evaporation;6-sewer
 
-def water_network(popsize=10,its=10):
+def water_network(popsize=10,its=2):
     #initialize
     pr=[]
     global_fit=0
@@ -66,10 +65,10 @@ def water_network(popsize=10,its=10):
         fit=(10 ** 10) /co
         pop.append([PU_split,fit])
     pop.sort(key=lambda x: x[1], reverse=True)
-    if int(popsize/10)==0:
-        print('Water network: Not enough popsize')
-        return 0
     for iterate in range(its):
+        # if int(popsize / 10) == 0:
+        #     print('Water network: Not enough popsize')
+        #     return 0
         for pppppp in range(popsize):
             point_a = random.randrange(0, int(popsize / 10), 1)
             point_b = random.randrange(popsize - int(popsize / 10), popsize, 1)
@@ -80,7 +79,7 @@ def water_network(popsize=10,its=10):
             buf_b = getnewList(par_b)
             for mm in range(len(buf_a)):
                 diff.append(CF_ * (buf_a[mm] - buf_b[mm]))
-            diff = mutation(diff)
+            diff = mutation(diff,0.8)
             bbb = pop[pppppp]
             dif_bu=[]
             for mm in range(len(diff)):
@@ -94,19 +93,21 @@ def water_network(popsize=10,its=10):
             fit = (10 ** 10) / co
             pop[pppppp][0]=dif_bu[0]
             pop[pppppp][1] = fit
-            pop.sort(key=lambda x: x[2], reverse=True)
+            pop.sort(key=lambda x: x[1], reverse=True)
             if fit>global_fit:
                 global_fit=fit
                 global_structure=[structure,global_eada_struct]
                 global_water_split=[dif_bu[0],fresh_split_]
+            pr.append((10 ** 10) / global_fit)
         #eliminate unsuitable units
-        pop=select(pop)
-        popsize=len(pop)
-        pr.append((10 ** 10) / global_fit)
+        # pop=select(pop)
+        # popsize=len(pop)
+
+        print('--Water allocation iterate:', iterate)
     plt.plot(pr)
     plt.show()
     return 10**10/global_fit,global_structure,global_water_split
-def GA(hot,cold,mut=0.2,crossp=0.7,popsize=10,its_GA=200):
+def GA(hot,cold,mut=0.2,crossp=0.7,popsize=50,its_GA=1):
     #add slop
     for flow in range(len(hot)):
         a = float(hot[flow][0])
@@ -119,6 +120,7 @@ def GA(hot,cold,mut=0.2,crossp=0.7,popsize=10,its_GA=200):
         c = float(cold[flow][2])
         cold[flow][3] = c / (a - b)
     #initialize
+    pr=[]
     Nh=len(hot)
     Nc=len(cold)
     global_fitness=0
@@ -172,7 +174,6 @@ def GA(hot,cold,mut=0.2,crossp=0.7,popsize=10,its_GA=200):
                     parent.append(pop[jjj])
                     tag.append(jjj)
                     break
-
         # 1.cross
         parent_a = parent[0]
         parent_b = parent[1]
@@ -216,12 +217,14 @@ def GA(hot,cold,mut=0.2,crossp=0.7,popsize=10,its_GA=200):
                 global_fitness=fitness[iiii]
                 structure=pop[iiii]
                 global_eada_struct=eada_struct[iiii]
+        pr.append((10 ** 10) / global_fitness)
+        print('----------GA iterate:', kkk)
     return global_fitness,structure,global_eada_struct
-def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=100, its=10):
+def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=50, its=1):
     Nh=len(hot)
     Nc=len(cold)
     pop = []
-    fitness=[]
+    record=0
     best_fitness=0
     abandon_record=0
     #initialize
@@ -474,7 +477,6 @@ def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=100, its=10):
         #eliminate unsuitable units
         pop=select(pop)
         popsize=len(pop)
-    print ('abandon record:',abandon_record)
     return record,best_fitness
 def hot_u_fun(hot,cold,structure_info,heat_load):
     Nh=len(hot)
@@ -904,9 +906,5 @@ def gen_hot_cold(PU_split,fresh_split):
 ###main part
 
 
-
-
-
-
-cost,structure,water_split=water_network()
+cost,aaa,bbbb=water_network()
 print (cost)
