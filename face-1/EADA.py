@@ -392,7 +392,7 @@ def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=100, its=4):
         for ppppp in range(popsize):
             #check whether popsize is enough
             if int(popsize * upper_range) == 0 or int(popsize * upper_range) == int(popsize * lower_range):
-                print('EADE not enough popsize')
+                # print('EADE not enough popsize')
                 break
             # let pb be the better one, find the right direction
             point_pa=random.randrange(int(popsize*upper_range),int(popsize*lower_range),1)
