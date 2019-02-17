@@ -906,4 +906,6 @@ def gen_hot_cold(PU_split,fresh_split):
 
 
 cost,aaa,bbbb=water_network()
-print (cost)
+print ('Cost is:',cost)
+print ('Structure:',aaa)
+print ('Water split:',bbbb)
