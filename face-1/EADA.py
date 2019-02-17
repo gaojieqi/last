@@ -40,7 +40,7 @@ cold_origin=[[250,600,0.6,0],[148,600,1,0],[120,540,0.14,0],[25,110,0.09,0],[120
 PU=[[15,62,0.7],[15,60,4.2],[15,70,10],[15,50,6.5],[15,60,0.7]]#[inlet_temperature, outlet_temperature, mass_quantity(tone)]
 index=[[0,0,1,0,0,1],[0,0,0,0,0,1],[0,0,0,0,0,1],[0,1,0,0,0,1],[1,1,1,1,1,1]]#index::1-wood preparation;2-washing;3-bleaching;4-pulp machine;5-black liquor evaporation;6-sewer
 
-def water_network(popsize=10,its=2):
+def water_network(popsize=25,its=2):
     #initialize
     pr=[]
     global_fit=0
@@ -107,7 +107,7 @@ def water_network(popsize=10,its=2):
     plt.plot(pr)
     plt.show()
     return 10**10/global_fit,global_structure,global_water_split
-def GA(hot,cold,mut=0.2,crossp=0.7,popsize=50,its_GA=1):
+def GA(hot,cold,mut=0.2,crossp=0.7,popsize=25,its_GA=3):
     #add slop
     for flow in range(len(hot)):
         a = float(hot[flow][0])
@@ -219,7 +219,7 @@ def GA(hot,cold,mut=0.2,crossp=0.7,popsize=50,its_GA=1):
                 global_eada_struct=eada_struct[iiii]
         pr.append((10 ** 10) / global_fitness)
     return global_fitness,structure,global_eada_struct
-def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=50, its=1):
+def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=100, its=4):
     Nh=len(hot)
     Nc=len(cold)
     pop = []
