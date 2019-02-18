@@ -740,7 +740,7 @@ def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
                         delta_cold=T[kk][1][jj]-T[kk][0][ii]
                         A=factor*heat_load[kk][ii]*split[kk][ii][jj]/float(1*delta_T_fun(delta_hot,delta_cold))
                         # n = int(A / 100)
-                        c_capital+=n*(a_cost+b_cost*(A))*1.5/(t_cost*day_adt*365)
+                        c_capital+=(a_cost+b_cost*(A))*1.5/(t_cost*day_adt*365)
                         print(c_capital,A)
         if kk==Ns-1:
             for jj in range(Nh):
@@ -750,7 +750,7 @@ def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
                         delta_cold = T[kk][1][jj] - T[kk][0][ii]
                         A = factor*heat_load[kk][jj] * split[kk][jj][ii] / float(1 * delta_T_fun(delta_hot, delta_cold))
                         # n=int(A/100)
-                        c_capital += n*(a_cost + b_cost * (A ))*1.5 /(t_cost*day_adt*365)
+                        c_capital += (a_cost + b_cost * (A ))*1.5 /(t_cost*day_adt*365)
                         print(c_capital, A)
     #utility cost
     #TODO set different cost of utility according to their qualities
