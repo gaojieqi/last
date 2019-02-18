@@ -36,7 +36,7 @@ waste_t=30#waste water temperature
 
 
 hot_origin=[[1600,70,0.26,0],[120,90,0.12,0],[900,160,0.18,0],[850,120,2.9,0],[454,148,0.75,0],[600,250,0.6,0],[600,250,0.25,0],[105,93,0.25,0],[128,120,0.78,0],[109,107,0.65,0]]#[inlet_temperature, outlet_temperature,enthalpy(GJ),k]
-cold_origin=[[250,600,0.6,0],[148,600,1,0],[120,540,0.14,0],[25,110,0.09,0],[120,151,2.8,0],[10,120,1,0],[85,165,0.6,0],[120,201,0.3,0],[95,124,0.1,0]]
+cold_origin=[[250,600,0.6,0],[148,600,1,0],[90,540,0.14,0],[25,110,0.09,0],[120,151,2.8,0],[10,120,1,0],[85,165,0.6,0],[120,201,0.3,0],[95,124,0.1,0]]
 PU=[[15,62,0.7],[15,60,4.2],[15,70,10],[15,50,6.5],[15,60,0.7]]#[inlet_temperature, outlet_temperature, mass_quantity(tone)]
 index=[[0,0,1,0,0,1],[0,0,0,0,0,1],[0,0,0,0,0,1],[0,1,0,0,0,1],[1,1,1,1,1,1]]#index::1-wood preparation;2-washing;3-bleaching;4-pulp machine;5-black liquor evaporation;6-sewer
 
@@ -741,6 +741,7 @@ def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
                         A=factor*heat_load[kk][ii]*split[kk][ii][jj]/float(1*delta_T_fun(delta_hot,delta_cold))
                         n = int(A / 100)
                         c_capital+=n*(a_cost+b_cost*(A))*1.5/(t_cost*day_adt*365)
+                        print(c_capital,A)
         if kk==Ns-1:
             for jj in range(Nh):
                 for ii in range(Nc):
@@ -750,6 +751,7 @@ def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
                         A = factor*heat_load[kk][jj] * split[kk][jj][ii] / float(1 * delta_T_fun(delta_hot, delta_cold))
                         n=int(A/100)
                         c_capital += n*(a_cost + b_cost * (A ))*1.5 /(t_cost*day_adt*365)
+                        print(c_capital, A)
     #utility cost
     #TODO set different cost of utility according to their qualities
     for jj in range(Nh):
