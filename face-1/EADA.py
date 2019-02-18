@@ -762,10 +762,10 @@ def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
     c_global=c_energy+c_capital
     return 10**10/float(c_global)
 def delta_T_fun(delta_hot,delta_cold):
-    # if delta_hot>1.7*delta_cold:
-    #     result = (delta_hot - delta_cold) / (math.log(delta_hot) - math.log(delta_cold))
-    # else:
-    result= (delta_hot + delta_cold) / 2
+    if delta_hot>1.7*delta_cold:
+        result = (delta_hot - delta_cold) / (math.log(delta_hot) - math.log(delta_cold))
+    else:
+        result= (delta_hot + delta_cold) / 2
     result=abs(result)
     return result
 def ran(start,end):
