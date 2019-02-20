@@ -754,6 +754,8 @@ def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
     for ii in range(Nc):
         HU+=hot_utility[ii]
     c_energy=HU*c_hu+CU*c_cu
+    print("operation cost:",c_energy)
+    print("fix cost:",c_capital)
     c_global=c_energy+c_capital
     return 10**10/float(c_global)
 def delta_T_fun(delta_hot,delta_cold):
