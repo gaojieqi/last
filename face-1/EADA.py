@@ -36,7 +36,7 @@ waste_t=30#waste water temperature
 
 hot_origin=[[1600,70,0.26,0],[120,90,0.12,0],[900,160,0.18,0],[850,120,2.9,0],[454,148,0.75,0],[600,250,0.6,0],[600,250,0.25,0],[105,93,0.25,0],[128,120,0.78,0],[109,107,0.65,0]]#[inlet_temperature, outlet_temperature,enthalpy(GJ),k]
 cold_origin=[[250,600,0.6,0],[148,600,1,0],[90,540,0.14,0],[25,110,0.09,0],[120,151,2.8,0],[10,120,1,0],[85,165,0.6,0],[120,201,0.3,0],[95,124,0.1,0]]
-PU=[[15,62,0.7],[15,60,4.2],[15,70,10],[15,50,6.5],[15,60,0.7]]#[inlet_temperature, outlet_temperature, mass_quantity(tone)]
+PU=[[62,62,0.7],[60,60,4.2],[70,70,10],[50,50,6.5],[60,60,0.7]]#[inlet_temperature, outlet_temperature, mass_quantity(tone)]
 index=[[0,0,1,0,0,1],[0,0,0,0,0,1],[0,0,0,0,0,1],[0,1,0,0,0,1],[1,1,1,1,1,1]]#index::1-wood preparation;2-washing;3-bleaching;4-pulp machine;5-black liquor evaporation;6-sewer
 
 def water_network(popsize=5,its=10):
@@ -117,7 +117,7 @@ def GA(hot,cold,mut=0.2,crossp=0.6,popsize=5,its_GA=20):
         a = float(cold[flow][0])
         b = float(cold[flow][1])
         c = float(cold[flow][2])
-        cold[flow][3] = c / (a - b)
+        cold[flow][3] = c / (b - a)
     #initialize
     Nh=len(hot)
     Nc=len(cold)
@@ -878,11 +878,13 @@ def gen_hot_cold(PU_split,fresh_split):
         #calculate temperature of flow
         m,t_start = mix_T(m, t)
         t_end = PU[pp][0]
-        enl = (t_start - t_end) * PU[pp][2] * water_capacity
-        stream = [t_start, t_end, enl, 0]
         if t_start > t_end:
+            enl = (t_start - t_end) * PU[pp][2] * water_capacity
+            stream = [t_start, t_end, enl, 0]
             hot.append(stream)
         if t_start < t_end:
+            enl = (-t_start + t_end) * PU[pp][2] * water_capacity
+            stream = [t_start, t_end, enl, 0]
             cold.append(stream)
     for pp in range(PU_count):
         s=0
@@ -894,11 +896,13 @@ def gen_hot_cold(PU_split,fresh_split):
     #stream in sewer_waste
     m,t_start=mix_T(m_wast,t_wast)
     t_end=waste_t
-    enl = (t_start - t_end) * sum(m_wast) * water_capacity
-    stream = [t_start, t_end, enl, 0]
     if t_start > t_end:
+        enl = (t_start - t_end) * sum(m_wast) * water_capacity
+        stream = [t_start, t_end, enl, 0]
         hot.append(stream)
     if t_start < t_end:
+        enl = (-t_start + t_end) * sum(m_wast) * water_capacity
+        stream = [t_start, t_end, enl, 0]
         cold.append(stream)
     return hot,cold
 
