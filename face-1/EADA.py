@@ -25,7 +25,7 @@ lower_range=0.7#Worest generaton chozen in eade
 selection_rate=0.99#selection of each iteration in eade
 factor=2000/(3600*24)#scale to energy consumption in second
 
-water_capacity=4.2#specia heat capacity for water(MJ/ton)
+water_capacity=0.0042#specia heat capacity for water(GJ/ton)
 p_fresh=3.4#price of fresh water(RMB/ton)
 PU_count=5#process count
 waste_water_count=1#water network output count
@@ -322,8 +322,7 @@ def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=50, its=5):
                             split_unit.append(0)
                     for jj in range(Nh):
                         if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
-                            split_unit[jj] = (1 - split_sum+split_unit[jj])
-                            break
+                            split_unit[jj] = split_unit[jj] / split_sum
                     heat_load[kk][ii] = random.random() * cold[ii][2]
                     T[kk][2][ii] = T[kk][0][ii]+ float(heat_load[kk][ii]) / cold[ii][3]
                     sp.append(split_unit)
@@ -348,11 +347,15 @@ def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=50, its=5):
                             split_unit.append(0)
                     for ii in range(Nc):
                         if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
-                            split_unit[ii] = (1 - split_sum+split_unit[ii])
-                            break
+                            split_unit[ii] = split_unit[ii]/split_sum
                     heat_load[kk][jj] = float(T[kk][3][jj] - T[kk][1][jj]) * hot[jj][3]
-                    T[kk][2][ii] = T[kk][0][ii] + float(heat_load[kk][ii]) / cold[ii][3]
+
                     sp.append(split_unit)
+                nnnnn=0
+                for jj in range(Nh):
+                    if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
+                        nnnnn+=heat_load[kk][jj]*sp[jj][ii]
+                T[kk][2][ii] = T[kk][0][ii] + float(nnnnn) / cold[ii][3]
                 split.append(sp)  # --------------split[Ns-1] represent split of hot stream in level k
             # initialize hot stream temperature
             if kk == 0:
@@ -360,7 +363,8 @@ def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=50, its=5):
                     llkkjj=0
                     for ii in range(Nc):
                         if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
-                            llkkjj+=(float(heat_load[kk][ii] * split[kk][ii][jj]) / hot[jj][3])
+                            ddddd=heat_load[kk][ii] * split[kk][ii][jj]
+                            llkkjj=llkkjj+(float(ddddd) / hot[jj][3])
                     T[kk][3][jj] =T[kk][1][jj]+llkkjj
             if kk!=0 and kk!=Ns-1:
                 for jj in range(Nh):
@@ -592,7 +596,7 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
     global_stop=0
     count=0
     abandon=0
-    limit=30#maximun count
+    limit=100#maximun count
     while global_stop==0:
         count+=1
         global_flag=1
@@ -685,7 +689,7 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
                     nnnnnn=0
                     for jj in range(Nh):
                         if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
-                            nnnnnn+=heat_load[kk][jj]
+                            nnnnnn+=heat_load[kk][jj]*sp[kk][jj][ii]
                     t[kk][2][ii] = t[kk][0][ii] + float(nnnnnn) / cold[ii][3]
                 stop = 0
                 summmm = []
