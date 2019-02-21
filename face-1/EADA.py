@@ -10,12 +10,12 @@ delta_T=10#pinch temperature
 a_cost=49000#fix capital(CNY)
 b_cost=2520#(CNY)
 c_cost=0.8#power efficient
-i_cost=0.1#interest rate
+i_cost=0.04#interest rate
 t_cost=20#operational interval(year)
 c_hu=28#cost of hot_utility(CNY/GJ)
 c_cu=10#cost of cold_utility(CNY/GJ)
-decay_rate=0.6#parameter of repair operator
-heat_coe=1000#heat coefficiency-----W/(K*m^2)
+decay_rate=0.9#parameter of repair operator
+heat_coe=1#heat coefficiency-----KW/(K*m^2)
 day_adt=2000#ADt per day
 
 CF=0.05#coefficient in EADA
@@ -23,7 +23,7 @@ CF_=0.1#coefficienct in water network
 upper_range=0.1#Top generation chozen in eade
 lower_range=0.7#Worest generaton chozen in eade
 selection_rate=0.99#selection of each iteration in eade
-factor=2000/(3600*24)#scale to energy consumption in second
+factor=day_adt*(10**6)/(3600*24)#scale to energy consumption in second(KJ/S)
 
 water_capacity=0.0042#specia heat capacity for water(GJ/ton)
 p_fresh=3.4#price of fresh water(RMB/ton)
@@ -34,8 +34,8 @@ waste_t=30#waste water temperature
 
 
 
-hot_origin=[[1600,70,0.26,0],[120,90,0.12,0],[900,160,0.18,0],[850,120,2.9,0],[454,148,0.75,0],[600,250,0.6,0],[600,250,0.25,0],[105,93,0.25,0],[128,120,0.78,0],[109,107,0.65,0]]#[inlet_temperature, outlet_temperature,enthalpy(GJ),k]
-cold_origin=[[250,600,0.6,0],[148,600,1,0],[90,540,0.14,0],[25,110,0.09,0],[120,151,2.8,0],[10,120,1,0],[85,165,0.6,0],[120,201,0.3,0],[95,124,0.1,0]]
+hot_origin=[[1600,70,0.26,0],[120,90,0.12,0],[900,160,0.18,0],[850,120,2.9,0],[454,148,0.75,0],[600,250,0.6,0],[600,250,0.25,0],[105,93,0.25,0],[128,120,0.78,0],[109,107,0.65,0],[64,30,2.3,0]]#[inlet_temperature, outlet_temperature,enthalpy(GJ),k]
+cold_origin=[[250,600,0.6,0],[148,600,1,0],[90,540,0.14,0],[25,110,0.09,0],[120,151,2.8,0],[10,120,1,0],[85,165,0.6,0],[120,201,0.3,0],[95,124,0.1,0],[21.5,70,0.2,0],[50,60,0.17,0],[15,50,0.96,0],[15,62,0.132,0],[15,60,0.13,0]]
 PU=[[62,62,0.7],[60,60,4.2],[70,70,10],[50,50,6.5],[60,60,0.7]]#[inlet_temperature, outlet_temperature, mass_quantity(tone)]
 index=[[0,0,1,0,0,1],[0,0,0,0,0,1],[0,0,0,0,0,1],[0,1,0,0,0,1],[1,1,1,1,1,1]]#index::1-wood preparation;2-washing;3-bleaching;4-pulp machine;5-black liquor evaporation;6-sewer
 
@@ -121,6 +121,7 @@ def GA(hot,cold,mut=0.2,crossp=0.6,popsize=5,its_GA=20):
     #initialize
     Nh=len(hot)
     Nc=len(cold)
+    pr=[]
     global_fitness=0
     pop=[]#no level discrimination
     pop_level=[]#level discrimination
@@ -215,7 +216,11 @@ def GA(hot,cold,mut=0.2,crossp=0.6,popsize=5,its_GA=20):
                 global_fitness=fitness[iiii]
                 structure=pop[iiii]
                 global_eada_struct=eada_struct[iiii]
-    return global_fitness,structure,global_eada_struct
+        pr.append((10 ** 10) / global_fitness)
+        print("GA iteration=",kkk)
+    plt.plot(pr)
+    plt.show()
+    return (10 ** 10)/global_fitness,structure,global_eada_struct
 def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=50, its=5):
     Nh=len(hot)
     Nc=len(cold)
@@ -596,51 +601,30 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
     global_stop=0
     count=0
     abandon=0
-    limit=100#maximun count
+    limit=30#maximun count
     while global_stop==0:
-        count+=1
         global_flag=1
         for kk in range(Ns):
             if kk==0:
-                stop=0
-                while stop == 0:
-                    count+=1
-                    flag = 1
-                    for jj in range(Nh):
-                        temp_max = 0
-                        flag_ini = 0
-                        for ii in range(Nc):
-                            if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
-                                temp_temp = cold[ii][0] + delta_T
-                                flag_ini = 1
-                                if temp_temp > temp_max:
-                                    temp_max = temp_temp
-                        for ii in range(Nc):
-                            if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
-                                if t[kk][1][jj] - delta_T < t[kk][0][ii] or t[kk][1][jj]>hot[jj][0] or t[kk][1][jj]<hot[jj][1]:
-                                    if flag_ini == 1:
-                                        llll = temp_max - hot[jj][1]
-                                        cold_utility[jj] = ran(float(llll) * hot[jj][3],hot[jj][2])
-                                        t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
-                                    if flag_ini == 0:
-                                        cold_utility[jj] = ran(0,hot[jj][2])
-                                        t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
-                                        t[kk][3][jj] = t[kk][1][jj]
-                                    flag = 0
-                                    global_flag=0
-                        if t[kk][1][jj]>hot[jj][0] or t[kk][1][jj]<hot[jj][1]:
-                            if flag_ini == 1:
-                                llll = temp_max - hot[jj][1]
-                                cold_utility[jj] = ran(float(llll) * hot[jj][3],hot[jj][2])
-                                t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
-                            if flag_ini == 0:
-                                cold_utility[jj] = ran(0,hot[jj][2])
-                                t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
-                                t[kk][3][jj] = t[kk][1][jj]
-                    if count > limit:
-                        stop=1
-                    if  flag == 1:
-                        stop = 1
+                for jj in range(Nh):
+                    temp_max = 0
+                    flag_ini = 0
+                    for ii in range(Nc):
+                        if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
+                            temp_temp = cold[ii][0] + delta_T
+                            flag_ini = 1
+                            if temp_temp > temp_max:
+                                temp_max = temp_temp
+                    if t[kk][1][jj] > hot[jj][0] or t[kk][1][jj] < hot[jj][1] or t[kk][1][jj] < temp_max:
+                        if flag_ini == 1:
+                            llll = temp_max - hot[jj][1]
+                            cold_utility[jj] = ran(float(llll) * hot[jj][3], hot[jj][2])
+                            t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
+                        if flag_ini == 0:
+                            cold_utility[jj] = ran(0, hot[jj][2])
+                            t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
+                            t[kk][3][jj] = t[kk][1][jj]
+                        global_flag = 0
             if kk != Ns - 1:
                 stop = 0
                 for ii in range(Nc):
@@ -743,18 +727,20 @@ def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
                     if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
                         delta_hot=T[kk][3][jj]-T[kk][2][ii]
                         delta_cold=T[kk][1][jj]-T[kk][0][ii]
-                        A=factor*heat_load[kk][ii]*split[kk][ii][jj]/float(1*delta_T_fun(delta_hot,delta_cold))
+                        A=factor*heat_load[kk][ii]*split[kk][ii][jj]/float(heat_coe*delta_T_fun(delta_hot,delta_cold))
                         # n = int(A / 100)
-                        c_capital+=(a_cost+b_cost*(A))*1.5/(t_cost*day_adt*365)
+                        print(A)
+                        c_capital+=(a_cost+b_cost*(A**c_cost))*2.19/(t_cost*day_adt*365)
         if kk==Ns-1:
             for jj in range(Nh):
                 for ii in range(Nc):
                     if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
                         delta_hot = T[kk][3][jj] - T[kk][2][ii]
                         delta_cold = T[kk][1][jj] - T[kk][0][ii]
-                        A = factor*heat_load[kk][jj] * split[kk][jj][ii] / float(1 * delta_T_fun(delta_hot, delta_cold))
+                        A = factor*heat_load[kk][jj] * split[kk][jj][ii] / float(heat_coe* delta_T_fun(delta_hot, delta_cold))
                         # n=int(A/100)
-                        c_capital += (a_cost + b_cost * (A ))*1.5 /(t_cost*day_adt*365)
+                        print(A)
+                        c_capital += (a_cost + b_cost * (A**c_cost))*2.19 /(t_cost*day_adt*365)
     #utility cost
     #TODO set different cost of utility according to their qualities
     for jj in range(Nh):
@@ -918,7 +904,10 @@ def gen_hot_cold(PU_split,fresh_split):
 ###main part
 
 
-cost,aaa,bbbb=water_network()
-print ('Cost is:',cost)
-print ('Structure:',aaa)
-print ('Water split:',bbbb)
+
+global_cost,structure,global_eada_struct=GA(hot_origin,cold_origin)
+print (global_cost)
+# cost,aaa,bbbb=water_network()
+# print ('Cost is:',cost)
+# print ('Structure:',aaa)
+# print ('Water split:',bbbb)
