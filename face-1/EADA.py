@@ -106,7 +106,7 @@ def water_network(popsize=5,its=10):
     plt.plot(pr)
     plt.show()
     return 10**10/global_fit,global_structure,global_water_split
-def GA(hot,cold,mut=0.2,crossp=0.6,popsize=5,its_GA=20):
+def GA(hot,cold,mut=0.95,crossp=0.6,popsize=5,its_GA=20):
     #add slop
     for flow in range(len(hot)):
         a = float(hot[flow][0])
@@ -221,7 +221,7 @@ def GA(hot,cold,mut=0.2,crossp=0.6,popsize=5,its_GA=20):
     plt.plot(pr)
     plt.show()
     return (10 ** 10)/global_fitness,structure,global_eada_struct
-def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=50, its=5):
+def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=2000, its=5):
     Nh=len(hot)
     Nc=len(cold)
     pop = []
@@ -452,7 +452,7 @@ def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=50, its=5):
                 if kk == Ns - 1:
                     for jj in range(Nh):
                         if pop[ppppp][1][kk][jj] < 0:
-                            pop[ppppp][1][kk][ii] = 0
+                            pop[ppppp][1][kk][jj] = 0
             #recalclate cold utility
             for jj in range(Nh):
                 if pop[ppppp][2][jj]>hot[jj][2]:
