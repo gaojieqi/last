@@ -707,6 +707,16 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
             abandon=1
         if global_flag==1:
             global_stop=1
+    for jj in range(Nh):
+        sum_=0
+        for kk in range(Ns):
+            if kk!=Ns-1:
+                for ii in range(Nc):
+                    if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
+                        sum_+=heat_load[kk][ii]*sp[kk][ii][jj]
+            if kk==Ns-1:
+                sum_+=heat_load[kk][jj]
+        cold_utility[jj]=hot[jj][2]-sum_
     return t,heat_load,cold_utility,abandon
 def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
     Nh=len(hot)
