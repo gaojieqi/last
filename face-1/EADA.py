@@ -14,7 +14,7 @@ i_cost=0.04#interest rate
 t_cost=20#operational interval(year)
 c_hu=28#cost of hot_utility(CNY/GJ)
 c_cu=10#cost of cold_utility(CNY/GJ)
-decay_rate=0.9#parameter of repair operator
+decay_rate=0.99#parameter of repair operator
 heat_coe=1#heat coefficiency-----KW/(K*m^2)
 day_adt=2000#ADt per day
 
@@ -596,7 +596,7 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
     global_stop=0
     count=0
     abandon=0
-    limit=31#maximun count
+    limit=100#maximun count
     while global_stop==0:
         global_flag=1
         for kk in range(Ns):
