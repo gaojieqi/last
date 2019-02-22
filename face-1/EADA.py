@@ -596,7 +596,7 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
     global_stop=0
     count=0
     abandon=0
-    limit=100#maximun count
+    limit=50#maximun count
     while global_stop==0:
         global_flag=1
         for kk in range(Ns):
