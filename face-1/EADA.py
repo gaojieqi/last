@@ -221,7 +221,7 @@ def GA(hot,cold,mut=0.95,crossp=0.6,popsize=5,its_GA=20):
     plt.plot(pr)
     plt.show()
     return (10 ** 10)/global_fitness,structure,global_eada_struct
-def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=2000, its=5):
+def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
     Nh=len(hot)
     Nc=len(cold)
     pop = []
@@ -745,6 +745,7 @@ def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
     for ii in range(Nc):
         HU+=hot_utility[ii]
     c_energy=HU*c_hu+CU*c_cu
+    print(structure_info)
     print("hot utility:",HU)
     print ("cold utility:",CU)
     print("operation cost:",c_energy)
