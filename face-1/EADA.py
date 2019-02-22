@@ -681,7 +681,7 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
                         for ii in range(Nc):
                             if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
                                 if t[kk][3][jj] - delta_T < t[kk][2][ii] or t[kk][2][ii]>cold[ii][1]:
-                                    ll = (hot[jj][0] - t[kk][1][jj]) * (hot[jj][3])/2
+                                    ll = (hot[jj][0] - t[kk][1][jj]) * (hot[jj][3])*(1-decay_rate)
                                     summmm[jj] += ll
                                     cold_utility[jj] += ll
                                     heat_load[kk][jj] -= ll
