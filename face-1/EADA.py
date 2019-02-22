@@ -593,7 +593,7 @@ def recalculate_T(hot,cold,structure_info,cold_utility,heat_load,split):
 def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
     Nh=len(hot)
     Nc=len(cold)
-    global_stop=1
+    global_stop=0
     count=0
     abandon=0
     limit=30#maximun count
