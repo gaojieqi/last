@@ -6,7 +6,7 @@ import copy
 
 
 Ns=2#level count
-delta_T=10#pinch temperature
+delta_T=5#pinch temperature
 a_cost=49000#fix capital(CNY)
 b_cost=2520#(CNY)
 c_cost=0.8#power efficient
