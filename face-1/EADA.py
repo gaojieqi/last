@@ -354,13 +354,13 @@ def EADA(hot,cold,structure_info, mut=0.8, crossp=0.7, popsize=50, its=5):
                         if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
                             split_unit[ii] = split_unit[ii]/split_sum
                     heat_load[kk][jj] = float(T[kk][3][jj] - T[kk][1][jj]) * hot[jj][3]
-
                     sp.append(split_unit)
-                nnnnn=0
-                for jj in range(Nh):
-                    if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
-                        nnnnn+=heat_load[kk][jj]*sp[jj][ii]
-                T[kk][2][ii] = T[kk][0][ii] + float(nnnnn) / cold[ii][3]
+                for ii in range(Nc):
+                    nnnnn = 0
+                    for jj in range(Nh):
+                        if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
+                            nnnnn += heat_load[kk][jj] * sp[jj][ii]
+                    T[kk][2][ii] = T[kk][0][ii] + float(nnnnn) / cold[ii][3]
                 split.append(sp)  # --------------split[Ns-1] represent split of hot stream in level k
             # initialize hot stream temperature
             if kk == 0:
@@ -578,16 +578,11 @@ def recalculate_T(hot,cold,structure_info,cold_utility,heat_load,split):
             T__ = []
             for ii in range(Nc):
                 d=0
-                f__=0
                 for jj in range(Nh):
                     if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
                         d += heat_load[kk][jj] * split[kk][jj][ii]
-                        f__ = 1
-                if f__ == 1:
-                    tttt = T[kk - 1][2][ii]+ d / float(cold[ii][3])
-                    T__.append(tttt)
-                if f__ == 0:
-                    T__.append(T_[1][ii])
+                tttt = T[kk - 1][2][ii]+ d / float(cold[ii][3])
+                T__.append(tttt)
             T_.append(T__)
             T__ = []
             for jj in range(Nh):
@@ -598,7 +593,7 @@ def recalculate_T(hot,cold,structure_info,cold_utility,heat_load,split):
 def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
     Nh=len(hot)
     Nc=len(cold)
-    global_stop=0
+    global_stop=1
     count=0
     abandon=0
     limit=30#maximun count
