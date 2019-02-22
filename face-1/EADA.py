@@ -194,12 +194,12 @@ def GA(hot,cold,mut=0.95,crossp=0.6,popsize=5,its_GA=20):
             if parent_a[iii]==1:
                 iiii=int((iii%Ns)/Nc)
                 jjjj=((iii%Ns)%Nc)-1
-                if cold[iiii][0]+delta_T>hot[jjjj][1] or cold[iiii][1]+delta_T>hot[jjjj][0]:
+                if hot[jjjj][0]-delta_T<cold[iiii][0]:
                     parent_a[iii]=0
             if parent_b[iii]==1:
                 iiii = int((iii % Ns) / Nc)
                 jjjj = ((iii % Ns) % Nc) - 1
-                if cold[iiii][0] + delta_T > hot[jjjj][1] or cold[iiii][1] + delta_T > hot[jjjj][0]:
+                if hot[jjjj][0]-delta_T<cold[iiii][0]:
                     parent_b[iii] = 0
         #change parents
         pop[tag[0]] = parent_a
