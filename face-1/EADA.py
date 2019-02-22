@@ -226,7 +226,7 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
     Nc=len(cold)
     pop = []
     record=0
-    best_fitness=0
+    best_fitness=1
     abandon_record=0
     #initialize
     ##initialize temperature. 0-3 dimension:cold-in/hot-out/cold-out/hot-in (T[ [[0],[1],[2],[3]],[...] ])
@@ -596,7 +596,7 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
     global_stop=0
     count=0
     abandon=0
-    limit=30#maximun count
+    limit=31#maximun count
     while global_stop==0:
         global_flag=1
         for kk in range(Ns):
