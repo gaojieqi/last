@@ -219,7 +219,7 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
     Nc=len(cold)
     pop = []
     record=0
-    best_fitness=1
+    best_fitness=0
     abandon_record=0
     #initialize
     ##initialize temperature. 0-3 dimension:cold-in/hot-out/cold-out/hot-in (T[ [[0],[1],[2],[3]],[...] ])
@@ -704,11 +704,13 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
                             # 2.recalculate split
                             su = 0
                             for iii in range(Nc):
-                                if iii != ii:
+                                if iii != ii and structure_info[Nh * Nc * kk + iii * Nh + jj] == 1:
                                     su += heat_load[kk][jj] * sp[kk][jj][iii]
                             # 3.spot sum
                             su_buf = su + lkjm
                             for iii in range(Nc):
+                                if su_buf==0:
+                                    continue
                                 if iii != ii:
                                     sp[kk][jj][iii] = heat_load[kk][jj] * sp[kk][jj][iii] / su_buf
                                 else:
@@ -747,7 +749,9 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
                                     # 3.spot sum
                                     su_buf = su + lkjm
                                     for iii in range(Nc):
-                                        if iii != ii:
+                                        if su_buf==0:
+                                            continue
+                                        if iii != ii and structure_info[Nh * Nc * kk + iii * Nh + jj] == 1:
                                             sp[kk][jj][iii] = heat_load[kk][jj] * sp[kk][jj][iii] / su_buf
                                         else:
                                             sp[kk][jj][iii] = lkjm / su_buf
@@ -830,7 +834,10 @@ def ran(start,end):
     if end<start:
         print ("Random error")
         return 0
-    dif=random.random()*(end-start)
+    co=0
+    while co==0:
+        co=random.random()
+    dif=co*(end-start)
     result=start+dif
     return result
 def getnewList(newlist):
