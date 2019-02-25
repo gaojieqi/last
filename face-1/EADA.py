@@ -271,16 +271,8 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
                     hl.append(0)
             heat_load_split.append(hl)
         for kk in range(Ns):
-            split_unit = []
-            tab = []
-            t_h_max = []
-            for jj in range(Nh):
-                tab.append(0)
-            for jj in range(Nh):
-                tab.append(0)
             # initialize duty and cold stream temperature
             if kk == 0:
-                # kk==0
                 for ii in range(Nc):
                     T[kk][0][ii] = copy.deepcopy(cold[ii][0])
                 for jj in range(Nh):
@@ -301,12 +293,10 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
                             cold_utility.append(ran(0,hot[jj][2]))
                             T[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
                     if flag_ini == 0:
-                        tab[jj] = 1  # mark stream with no heat exchange in k level
                         cold_utility.append(ran(0,hot[jj][2]))
                         T[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
                         T[kk][3][jj] = T[kk][1][jj]
             if kk != Ns - 1:
-                # common
                 sp = []
                 for ii in range(Nc):
                     split_sum = 0
@@ -346,14 +336,12 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
                     for ii in range(Nc):
                         if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
                             split_unit[ii] = split_unit[ii]/split_sum
-                    heat_load[kk][jj] = float(T[kk][3][jj] - T[kk][1][jj]) * hot[jj][3]
                     sp.append(split_unit)
                 for ii in range(Nc):
                     nnnnn = 0
                     for jj in range(Nh):
                         if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
                             nnnnn += heat_load[kk][jj] * sp[jj][ii]
-                    T[kk][2][ii] = T[kk][0][ii] + float(nnnnn) / cold[ii][3]
                 split.append(sp)  # --------------split[Ns-1] represent split of hot stream in level k
             # initialize hot stream temperature
             if kk == 0:
