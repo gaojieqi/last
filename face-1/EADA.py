@@ -440,7 +440,7 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
             T__=recalculate_T(hot,cold,structure_info,pop[ppppp][2],pop[ppppp][1],pop[ppppp][0])
             #repair all
             T__, pop[ppppp][1], pop[ppppp][2],pop[ppppp][0]= repair(hot,cold,T__, pop[ppppp][0], structure_info, pop[ppppp][1], pop[ppppp][2])
-            hot_u=hot_u_fun(hot,cold,structure_info,pop[ppppp][1])
+            hot_u=hot_u_fun(hot,cold,structure_info,pop[ppppp][1],pop[ppppp][0])
             fit_unit=fobj(hot,cold,T__,pop[ppppp][0],structure_info,pop[ppppp][1],pop[ppppp][2],hot_u)
             pop[ppppp][3]=fit_unit
             # insert to pop and sort
