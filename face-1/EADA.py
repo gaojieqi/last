@@ -6,7 +6,7 @@ import copy
 
 
 Ns=2#level count
-delta_T=5#pinch temperature
+delta_T=1#pinch temperature
 a_cost=49000#fix capital(CNY)
 b_cost=2520#(CNY)
 c_cost=0.8#power efficient
@@ -124,24 +124,17 @@ def GA(hot,cold,mut=0.95,crossp=0.6,popsize=5,its_GA=20):
     pr=[]
     global_fitness=0
     pop=[]#no level discrimination
-    pop_level=[]#level discrimination
     structure=0
     global_eada_struct=0
-    for ii in range(popsize):
-        pop_unit_level=[]
+    for ppp in range(popsize):
         pop_unit = []
         for kk in range(Ns):
-            pop_level_cache=[]
             for ii in range(Nc):
                 for jj in range(Nh):
                     if hot[jj][0]-delta_T>cold[ii][0]:
-                        pop_level_cache.append(random.randrange(0,2,1))
                         pop_unit.append(random.randrange(0,2,1))
                     else:
-                        pop_level_cache.append(0)
                         pop_unit.append(0)
-            pop_unit_level.append(pop_level_cache)
-        pop_level.append(pop_unit_level)#for the first unit [[1,0],[1,1]]:[1,0]->Unit 1 level 1,[1,1]->Unit 1 level 2
         pop.append(pop_unit)
     #EADA first iteration
     fitness=[]
@@ -596,7 +589,7 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
     global_stop=0
     count=0
     abandon=0
-    limit=50#maximun count
+    limit=100#maximun count
     while global_stop==0:
         global_flag=1
         for kk in range(Ns):
@@ -632,35 +625,96 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
                 while stop == 0:
                     count += 1
                     flag = 1
+                    #(1) check t[kk][2](cold side) temperature
+                    for ii in range(Nc):
+                        lkjm=0
+                        while t[kk][2][ii]>cold[ii][1]:
+                            lkjm+=heat_load[kk][ii]*(1-decay_rate)
+                            heat_load[kk][ii]=heat_load[kk][ii]*decay_rate
+                            t[kk][2][ii]=t[kk][0][ii]+heat_load[kk][ii]/cold[ii][3]
+                            t[kk+1][0][ii]=t[kk][2][ii]
+                        for jj in range(Nh):
+                            if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
+                                t[kk][3][jj]-=lkjm*sp[kk][ii][jj]/float(hot[jj][3])
+                                t[kk+1][1][jj]=t[kk][3][jj]
+                    #(2) check t[kk][3](hot side) temperature
+                    for jj in range(Nh):
+                        while t[kk][3][jj]>hot[jj][0]:
+                            ccccc=0
+                            for ii in range(Nc):
+                                if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
+                                    #1.decay
+                                    lkjm = heat_load[kk][ii] * sp[kk][ii][jj] * decay_rate
+                                    ccccc+=heat_load[kk][ii] * sp[kk][ii][jj]* (1-decay_rate)
+                                    #2.recalculate split
+                                    su = 0
+                                    for jjj in range(Nh):
+                                        if jjj != jj:
+                                            su += heat_load[kk][ii] * sp[kk][ii][jjj]
+                                    #3.spot sum
+                                    su_buf = su + lkjm
+                                    for jjj in range(Nh):
+                                        if jjj != jj:
+                                            sp[kk][ii][jjj] = heat_load[kk][ii] * sp[kk][ii][jjj] / su_buf
+                                        else:
+                                            sp[kk][ii][jjj] = lkjm / su_buf
+                                    heat_load[kk][ii] = su_buf
+                                    #4.adjust temperature
+                                    t[kk][2][ii] = t[kk][0][ii] + heat_load[kk][ii] / cold[ii][3]
+                                    t[kk + 1][0][ii] = t[kk][2][ii]
+                            t[kk][3][jj]-=ccccc/hot[jj][3]
+                            t[kk + 1][1][jj] = t[kk][3][jj]
+                    #(3) check t[kk][3]-t[kk][2] and t[kk+1][1]-t[kk+1][0](delta temperature)
                     for ii in range(Nc):
                         for jj in range(Nh):
-                            if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
-                                if t[kk][3][jj] - delta_T < t[kk][2][ii] or t[kk][3][jj] > hot[jj][0] or t[kk][2][ii] > \
-                                        cold[ii][1]:
-                                    lkjm=heat_load[kk][ii] * (1-decay_rate)
+                            #check t[kk][3]-t[kk][2]
+                            if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
+                                while t[kk][3][jj] - delta_T < t[kk][2][ii]:
+                                    #1.smaller heat_load of cold stream
+                                    lkjm = heat_load[kk][ii] * (1 - decay_rate)
                                     heat_load[kk][ii] = heat_load[kk][ii] * decay_rate
                                     for jjj in range(Nh):
                                         if structure_info[Nh*Nc*kk+ii * Nh + jjj] == 1:
-                                            t[kk][3][jjj]-=lkjm * sp[kk][ii][jjj] / float(hot[jjj][3])
-                                    t[kk][2][ii] = t[kk][0][ii] + float(heat_load[kk][ii]) / cold[ii][3]
-                                    global_flag=0
-                                    flag=0
-                    if  flag == 1:
-                        for ii in range(Nc):
-                            t[kk][2][ii] = t[kk][0][ii] + float(heat_load[kk][ii]) / cold[ii][3]
-                        for jj in range(Nh):
-                            suff = 0
-                            for ii in range(Nc):
-                                if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
-                                    suff += heat_load[kk][ii] * sp[kk][ii][jj] / float(hot[jj][3])
-                            t[kk][3][jj] = t[kk][1][jj]+suff
-                        stop = 1
-                    if count > limit:
-                        stop=1
-                for jj in range(Nh):
-                    t[kk+1][1][jj]=t[kk][3][jj]
-                for ii in range(Nc):
-                    t[kk+1][0][ii]=t[kk][2][ii]
+                                            cold_utility[jjj]+=lkjm * sp[kk][ii][jjj]
+                                    #2.larger cold_utility use
+                                    ddddd=hot[jj][0]-t[kk][3][jj]
+                                    dd=ran(0,ddddd)
+                                    #3.adjust hot stream temperature
+                                    for kkkk in range(Ns):
+                                        if kkkk!=Ns-1:
+                                            t[kkkk][1][jj]+=dd
+                                            t[kkkk][3][jj]+=dd
+                                        if kkkk==Ns-1:
+                                            t[kkkk][1][jj] += dd
+                                    #4.adjust cold_utility
+                                    cold_utility[jj]=cold_utility[jj]+dd/hot[jj][3]
+                                    #5.adjust cold_stream temperature
+                                    t[kk][2][ii] = t[kk][0][ii] + heat_load[kk][ii] / cold[ii][3]
+                                    t[kk+1][0][ii]=t[kk][2][ii]
+                            # check t[kk+1][1]-t[kk+1][0]
+                            if structure_info[Nh * Nc * (kk+1) + ii * Nh + jj] == 1:
+                                while t[kk+1][1][jj] - delta_T < t[kk+1][0][ii]:
+                                    #1.smaller heat_load of cold stream
+                                    lkjm = heat_load[kk][ii] * (1 - decay_rate)
+                                    heat_load[kk][ii] = heat_load[kk][ii] * decay_rate
+                                    for jjj in range(Nh):
+                                        if structure_info[Nh*Nc*kk+ii * Nh + jjj] == 1:
+                                            cold_utility[jjj]+=lkjm * sp[kk][ii][jjj]#keep hot stream temperature[3] the same
+                                    #2.larger cold_utility use
+                                    ddddd=hot[jj][0]-t[kk][3][jj]
+                                    dd=ran(0,ddddd)
+                                    #3.adjust hot stream temperature
+                                    for kkkk in range(Ns):
+                                        if kkkk!=Ns-1:
+                                            t[kkkk][1][jj]+=dd
+                                            t[kkkk][3][jj]+=dd
+                                        if kkkk==Ns-1:
+                                            t[kkkk][1][jj] += dd
+                                    #4.adjust cold_utility
+                                    cold_utility[jj]=cold_utility[jj]+dd/hot[jj][3]
+                                    #5.adjust cold_stream temperature
+                                    t[kk][2][ii] = t[kk][0][ii] + heat_load[kk][ii] / cold[ii][3]
+                                    t[kk + 1][0][ii] = t[kk][2][ii]
             if kk == Ns - 1:
                 for jj in range(Nh):
                     heat_load[kk][jj] = float(t[kk][3][jj] - t[kk][1][jj]) * hot[jj][3]
@@ -670,6 +724,15 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
                         if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
                             nnnnnn+=heat_load[kk][jj]*sp[kk][jj][ii]
                     t[kk][2][ii] = t[kk][0][ii] + float(nnnnnn) / cold[ii][3]
+                #(1) check t[kk][2] (cold stream) temperature
+                for ii in range(Nc):
+                    if t[kk][2][ii]>cold[ii][1]:
+                        for jj in range(Nh):
+                            if structure_info[Nh * Nc * kk  + ii * Nh + jj]==1:
+
+
+
+
                 stop = 0
                 summmm = []
                 for jj in range(Nh):
@@ -766,7 +829,7 @@ def delta_T_fun(delta_hot,delta_cold):
     # if delta_hot>1.7*delta_cold:
     #     result = (delta_hot - delta_cold) / (math.log(delta_hot) - math.log(delta_cold))
     # else:
-    result= (delta_hot + delta_cold) / 2
+    result= ((delta_hot*delta_cold)*(delta_hot + delta_cold) / 2)** (1. / 3)
     result=abs(result)
     return result
 def ran(start,end):
@@ -907,8 +970,23 @@ def gen_hot_cold(PU_split,fresh_split):
         stream = [t_start, t_end, enl, 0]
         cold.append(stream)
     return hot,cold
+def recalculate_split(ii,jj,kk,heat_load,sp,Nh,Nc):
+    if kk!=Ns-1:
+        lkjm = heat_load[kk][ii] * sp[kk][ii][jj] * decay_rate
+        su = 0
+        for jjj in range(Nh):
+            if jjj != jj:
+                su += heat_load[kk][ii] * sp[kk][ii][jjj]
+        # spot sum
+        su_buf = su + lkjm
+        for jjj in range(Nh):
+            if jjj != jj:
+                sp[kk][ii][jjj] = heat_load[kk][ii] * sp[kk][ii][jjj] / su_buf
+            else:
+                sp[kk][ii][jjj] = lkjm / su_buf
+        heat_load[kk][ii] = su_buf
 
-
+    return heat_load,sp
 ###main part
 
 
