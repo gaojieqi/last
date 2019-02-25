@@ -760,7 +760,11 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
                                     t[kkkk][1][jj] += dd
                             # 5.adjust cold_utility
                             cold_utility[jj] += ccccc
-                            t[kk][2][ii] = t[kk][0][ii] + heat_load[kk][ii] / cold[ii][3]
+                            nnnnnn = 0
+                            for jj in range(Nh):
+                                if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
+                                    nnnnnn += heat_load[kk][jj] * sp[kk][jj][ii]
+                            t[kk][2][ii] = t[kk][0][ii] + float(nnnnnn) / cold[ii][3]
     for jj in range(Nh):
         sum_=0
         for kk in range(Ns):
