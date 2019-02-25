@@ -361,8 +361,8 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
                             kklljj+=(float(heat_load[kk][ii] * split[kk][ii][jj]) / hot[jj][3])
                     T[kk][3][jj] =T[kk][1][jj]+kklljj
         #repair
-        T, heat_load, cold_utility = repair(hot,cold,T, split, structure_info, heat_load, cold_utility)
-        hot_utility=hot_u_fun(hot,cold,structure_info,heat_load)
+        T, heat_load, cold_utility,split = repair(hot,cold,T, split, structure_info, heat_load, cold_utility)
+        hot_utility=hot_u_fun(hot,cold,structure_info,heat_load,split)
         #add to fitness
         fit_unit=fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility)
         #insert to pop and sort
@@ -439,7 +439,7 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
             #recalculate temperature
             T__=recalculate_T(hot,cold,structure_info,pop[ppppp][2],pop[ppppp][1],pop[ppppp][0])
             #repair all
-            T__, pop[ppppp][1], pop[ppppp][2]= repair(hot,cold,T__, pop[ppppp][0], structure_info, pop[ppppp][1], pop[ppppp][2])
+            T__, pop[ppppp][1], pop[ppppp][2],pop[ppppp][0]= repair(hot,cold,T__, pop[ppppp][0], structure_info, pop[ppppp][1], pop[ppppp][2])
             hot_u=hot_u_fun(hot,cold,structure_info,pop[ppppp][1])
             fit_unit=fobj(hot,cold,T__,pop[ppppp][0],structure_info,pop[ppppp][1],pop[ppppp][2],hot_u)
             pop[ppppp][3]=fit_unit
@@ -455,7 +455,7 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
         pop=select(pop)
         popsize=len(pop)
     return record,best_fitness
-def hot_u_fun(hot,cold,structure_info,heat_load):
+def hot_u_fun(hot,cold,structure_info,heat_load,sp):
     Nh=len(hot)
     Nc=len(cold)
     love = []
@@ -464,7 +464,7 @@ def hot_u_fun(hot,cold,structure_info,heat_load):
         love.append(0)
         for jj in range(Nh):
             if structure_info[Nh * Nc * (Ns-1) + ii * Nh + jj] == 1:
-                love[ii] += heat_load[Ns - 1][jj]
+                love[ii] += heat_load[Ns - 1][jj]*sp[Ns-1][jj][ii]
 
     for ii in range(Nc):
         lkjlkj = 0
@@ -777,13 +777,11 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
             if kk==Ns-1:
                 sum_+=heat_load[kk][jj]
         cold_utility[jj]=hot[jj][2]-sum_
-    return t,heat_load,cold_utility
+    return t,heat_load,cold_utility,sp
 def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
     Nh=len(hot)
     Nc=len(cold)
     c_capital=0
-    CU=0
-    HU=0
     #equipment cost
     for kk in range(Ns):
         if kk!=Ns-1:
@@ -810,15 +808,14 @@ def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
                         c_capital += (a_cost + b_cost * (A))*2.19 /(t_cost*day_adt*365)
     #utility cost
     #TODO set different cost of utility according to their qualities
-    for jj in range(Nh):
-        CU+=cold_utility[jj]
-    for ii in range(Nc):
-        HU+=hot_utility[ii]
+    CU=sum(cold_utility)
+    HU=sum(hot_utility)
     c_energy=HU*c_hu+CU*c_cu
     print(structure_info)
     print("hot utility:",HU)
     print ("cold utility:",CU)
     print("operation cost:",c_energy)
+    print("Number of exchanger:",sum(structure_info))
     print("fix cost:",c_capital)
     c_global=c_energy+c_capital
     return 10**10/float(c_global)
