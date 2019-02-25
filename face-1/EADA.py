@@ -707,7 +707,6 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
                                 if iii != ii:
                                     su += heat_load[kk][jj] * sp[kk][jj][iii]
                             # 3.spot sum
-
                             su_buf = su + lkjm
                             for iii in range(Nc):
                                 if iii != ii:
