@@ -14,7 +14,7 @@ i_cost=0.04#interest rate
 t_cost=20#operational interval(year)
 c_hu=28#cost of hot_utility(CNY/GJ)
 c_cu=10#cost of cold_utility(CNY/GJ)
-decay_rate=0.99#parameter of repair operator
+decay_rate=0.9#parameter of repair operator
 heat_coe=1#heat coefficiency-----KW/(K*m^2)
 day_adt=2000#ADt per day
 
@@ -585,7 +585,6 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
                         cold_utility[jj] = ran(0, hot[jj][2])
                         t[kk][1][jj] = hot[jj][1] + float(cold_utility[jj]) / hot[jj][3]
                         t[kk][3][jj] = t[kk][1][jj]
-                    global_flag = 0
         if kk != Ns - 1:
             for ii in range(Nc):
                 flag_ini = 0
