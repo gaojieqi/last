@@ -730,40 +730,42 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
                             nnnnnn += heat_load[kk][jj] * sp[kk][jj][ii]
                     t[kk][2][ii] = t[kk][0][ii] + float(nnnnnn) / cold[ii][3]
             # (2) check t[kk][3]-t[kk][2]
-            for jj in range(Nh):
+            for jjjj in range(Nh):
                 for ii in range(Nc):
-                    if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
-                        while t[kk][3][jj] - t[kk][2][ii] < delta_T:
-                            # 1.decay
-                            lkjm = heat_load[kk][jj] * sp[kk][jj][ii] * decay_rate
-                            ccccc = heat_load[kk][jj] * sp[kk][jj][ii] * (1 - decay_rate)
-                            # 2.recalculate split
-                            su = 0
-                            for iii in range(Nc):
-                                if iii != ii:
-                                    su += heat_load[kk][jj] * sp[kk][jj][iii]
-                            # 3.spot sum
-                            su_buf = su + lkjm
-                            for iii in range(Nc):
-                                if iii != ii:
-                                    sp[kk][jj][iii] = heat_load[kk][jj] * sp[kk][jj][iii] / su_buf
-                                else:
-                                    sp[kk][jj][iii] = lkjm / su_buf
-                            heat_load[kk][jj] = su_buf
-                            # 4.adjust temperature
-                            dd = ccccc / hot[jj][3]
-                            for kkkk in range(Ns):
-                                if kkkk != Ns - 1:
-                                    t[kkkk][1][jj] += dd
-                                    t[kkkk][3][jj] += dd
-                                if kkkk == Ns - 1:
-                                    t[kkkk][1][jj] += dd
-                            # 5.adjust cold_utility
-                            cold_utility[jj] += ccccc
-                            nnnnnn = 0
+                    if structure_info[Nh * Nc * kk + ii * Nh + jjjj] == 1:
+                        while t[kk][3][jjjj] - t[kk][2][ii] < delta_T:
                             for jj in range(Nh):
                                 if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
-                                    nnnnnn += heat_load[kk][jj] * sp[kk][jj][ii]
+                                    # 1.decay
+                                    lkjm = heat_load[kk][jj] * sp[kk][jj][ii] * decay_rate
+                                    ccccc = heat_load[kk][jj] * sp[kk][jj][ii] * (1 - decay_rate)
+                                    # 2.recalculate split
+                                    su = 0
+                                    for iii in range(Nc):
+                                        if iii != ii:
+                                            su += heat_load[kk][jj] * sp[kk][jj][iii]
+                                    # 3.spot sum
+                                    su_buf = su + lkjm
+                                    for iii in range(Nc):
+                                        if iii != ii:
+                                            sp[kk][jj][iii] = heat_load[kk][jj] * sp[kk][jj][iii] / su_buf
+                                        else:
+                                            sp[kk][jj][iii] = lkjm / su_buf
+                                    heat_load[kk][jj] = su_buf
+                                    # 4.adjust temperature
+                                    dd = ccccc / hot[jj][3]
+                                    for kkkk in range(Ns):
+                                        if kkkk != Ns - 1:
+                                            t[kkkk][1][jj] += dd
+                                            t[kkkk][3][jj] += dd
+                                        if kkkk == Ns - 1:
+                                            t[kkkk][1][jj] += dd
+                                    # 5.adjust cold_utility
+                                    cold_utility[jj] += ccccc
+                            nnnnnn = 0
+                            for jjj in range(Nh):
+                                if structure_info[Nh * Nc * kk + ii * Nh + jjj] == 1:
+                                    nnnnnn += heat_load[kk][jjj] * sp[kk][jjj][ii]
                             t[kk][2][ii] = t[kk][0][ii] + float(nnnnnn) / cold[ii][3]
     for jj in range(Nh):
         sum_=0
