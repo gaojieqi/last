@@ -22,7 +22,7 @@ CF=0.2#coefficient in EADA
 CF_=0.1#coefficienct in water network
 upper_range=0.1#Top generation chozen in eade
 lower_range=0.7#Worest generaton chozen in eade
-selection_rate=0.99#selection of each iteration in eade
+selection_rate=1#selection of each iteration in eade
 factor=day_adt*(10**6)/(3600*24)#scale to energy consumption in second(KJ/S)
 
 water_capacity=0.0042#specia heat capacity for water(GJ/ton)
@@ -214,7 +214,7 @@ def GA(hot,cold,mut=0.95,crossp=0.6,popsize=5,its_GA=20):
     plt.plot(pr)
     plt.show()
     return (10 ** 10)/global_fitness,structure,global_eada_struct
-def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=10, its=5):
+def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=10, its=2):
     Nh=len(hot)
     Nc=len(cold)
     pop = []
@@ -632,6 +632,8 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
                             # 3.spot sum
                             su_buf = su + lkjm
                             for jjj in range(Nh):
+                                if su_buf==0:
+                                    continue
                                 if jjj != jj:
                                     sp[kk][ii][jjj] = heat_load[kk][ii] * sp[kk][ii][jjj] / su_buf
                                 else:
