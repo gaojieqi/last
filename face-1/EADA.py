@@ -18,7 +18,7 @@ decay_rate=0.9#parameter of repair operator
 heat_coe=1#heat coefficiency-----KW/(K*m^2)
 day_adt=2000#ADt per day
 
-CF=0.05#coefficient in EADA
+CF=0.2#coefficient in EADA
 CF_=0.1#coefficienct in water network
 upper_range=0.1#Top generation chozen in eade
 lower_range=0.7#Worest generaton chozen in eade
@@ -214,7 +214,7 @@ def GA(hot,cold,mut=0.95,crossp=0.6,popsize=5,its_GA=20):
     plt.plot(pr)
     plt.show()
     return (10 ** 10)/global_fitness,structure,global_eada_struct
-def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
+def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=10, its=5):
     Nh=len(hot)
     Nc=len(cold)
     pop = []
@@ -308,10 +308,16 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
                             split_unit.append(ppp)
                         else:
                             split_unit.append(0)
+                    #only stream with exchanger will have heat_load>0
+                    connect_flag=0
                     for jj in range(Nh):
                         if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
                             split_unit[jj] = split_unit[jj] / split_sum
-                    heat_load[kk][ii] = random.random() * cold[ii][2]
+                            connect_flag=1
+                    if connect_flag==1:
+                        heat_load[kk][ii] = random.random() * cold[ii][2]
+                    else:
+                        heat_load[kk][ii]=0
                     T[kk][2][ii] = T[kk][0][ii]+ float(heat_load[kk][ii]) / cold[ii][3]
                     sp.append(split_unit)
                 split.append(sp)
@@ -333,15 +339,15 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
                             split_unit.append(ppp)
                         else:
                             split_unit.append(0)
+                    #check if stream has connection
+                    connect_flag=0
                     for ii in range(Nc):
                         if structure_info[Nh*Nc*kk+ii * Nh + jj] == 1:
                             split_unit[ii] = split_unit[ii]/split_sum
+                            connect_flag=1
+                    if connect_flag==0:
+
                     sp.append(split_unit)
-                for ii in range(Nc):
-                    nnnnn = 0
-                    for jj in range(Nh):
-                        if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
-                            nnnnn += heat_load[kk][jj] * sp[jj][ii]
                 split.append(sp)  # --------------split[Ns-1] represent split of hot stream in level k
             # initialize hot stream temperature
             if kk == 0:
@@ -375,7 +381,7 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
         for ppppp in range(popsize):
             #check whether popsize is enough
             if int(popsize * upper_range) == 0 or int(popsize * upper_range) == int(popsize * lower_range):
-                # print('EADE not enough popsize')
+                print('EADE not enough popsize')
                 break
             # let pb be the better one, find the right direction
             point_pa=random.randrange(int(popsize*upper_range),int(popsize*lower_range),1)
@@ -426,16 +432,20 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=2000, its=5):
                     for ii in range(Nc):
                         if pop[ppppp][1][kk][ii]<0:
                             pop[ppppp][1][kk][ii]=0
+                        if pop[ppppp][1][kk][ii] > cold[ii][2]:
+                            pop[ppppp][1][kk][ii]=0.95*cold[ii][2]
                 if kk == Ns - 1:
                     for jj in range(Nh):
                         if pop[ppppp][1][kk][jj] < 0:
                             pop[ppppp][1][kk][jj] = 0
+                        if pop[ppppp][1][kk][jj] > hot[jj][2]:
+                            pop[ppppp][1][kk][jj]=0.95*hot[jj][2]
             #recalclate cold utility
             for jj in range(Nh):
-                if pop[ppppp][2][jj]>hot[jj][2]:
-                    pop[ppppp][2][jj]=copy.deepcopy(hot[jj][2]*0.8)
                 if pop[ppppp][2][jj]<0:
                     pop[ppppp][2][jj]=0
+                if pop[ppppp][2][jj]>hot[jj][2]:
+                    pop[ppppp][2][jj]=0.95*hot[jj][2]
             #recalculate temperature
             T__=recalculate_T(hot,cold,structure_info,pop[ppppp][2],pop[ppppp][1],pop[ppppp][0])
             #repair all
