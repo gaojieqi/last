@@ -346,7 +346,7 @@ def EADA(hot,cold,structure_info, mut=0.95, crossp=0.7, popsize=10, its=5):
                             split_unit[ii] = split_unit[ii]/split_sum
                             connect_flag=1
                     if connect_flag==0:
-
+                        heat_load[kk][jj] = 0
                     sp.append(split_unit)
                 split.append(sp)  # --------------split[Ns-1] represent split of hot stream in level k
             # initialize hot stream temperature
@@ -696,7 +696,22 @@ def repair(hot,cold,t,sp,structure_info,heat_load,cold_utility):
                             t[kk + 1][0][ii] = t[kk][2][ii]
         if kk == Ns - 1:
             for jj in range(Nh):
-                heat_load[kk][jj] = float(t[kk][3][jj] - t[kk][1][jj]) * hot[jj][3]
+                # check whether stream has connection
+                connection_flag = 0
+                for ii in range(Nc):
+                    if structure_info[Nh * Nc * kk + ii * Nh + jj] == 1:
+                        connection_flag=1
+                if connection_flag==0:
+                    mmmmmm=t[kk][3][jj] - t[kk][1][jj]
+                    for kkkk in range(Ns):
+                        if kkkk != Ns - 1:
+                            t[kkkk][1][jj] += mmmmmm
+                            t[kkkk][3][jj] += mmmmmm
+                        if kkkk == Ns - 1:
+                            t[kkkk][1][jj] += mmmmmm
+                    heat_load[kk][jj]=0
+                if connection_flag==1:
+                    heat_load[kk][jj] = float(t[kk][3][jj] - t[kk][1][jj]) * hot[jj][3]
             for ii in range(Nc):
                 nnnnnn = 0
                 for jj in range(Nh):
