@@ -106,7 +106,7 @@ def water_network(popsize=5,its=10):
     plt.plot(pr)
     plt.show()
     return 10**10/global_fit,global_structure,global_water_split
-def GA(hot,cold,mut=0.95,crossp=0.6,popsize=5,its_GA=20):
+def GA(hot,cold,mut=0.999,crossp=0.6,popsize=5,its_GA=20):
     #add slop
     for flow in range(len(hot)):
         a = float(hot[flow][0])
@@ -183,17 +183,15 @@ def GA(hot,cold,mut=0.95,crossp=0.6,popsize=5,its_GA=20):
             if random.random() > mut:
                 parent_b[iii] = 1 - parent_b[iii]
         # 3.repaire constrains
-        for iii in range(Nh*Nc*Ns):
-            if parent_a[iii]==1:
-                iiii=int((iii%Ns)/Nc)
-                jjjj=((iii%Ns)%Nc)-1
-                if hot[jjjj][0]-delta_T<cold[iiii][0]:
-                    parent_a[iii]=0
-            if parent_b[iii]==1:
-                iiii = int((iii % Ns) / Nc)
-                jjjj = ((iii % Ns) % Nc) - 1
-                if hot[jjjj][0]-delta_T<cold[iiii][0]:
-                    parent_b[iii] = 0
+        for kk in range(Ns):
+            for ii in range(Nc):
+                for jj in range(Nh):
+                    if parent_a[Nh*Nc*kk+ii * Nh + jj]==1:
+                        if hot[jj][0] - delta_T < cold[ii][0]:
+                            parent_a[Nh * Nc * kk + ii * Nh + jj]=0
+                    if parent_b[Nh*Nc*kk+ii * Nh + jj]==1:
+                        if hot[jj][0] - delta_T < cold[ii][0]:
+                            parent_b[Nh * Nc * kk + ii * Nh + jj]=0
         #change parents
         pop[tag[0]] = parent_a
         pop[tag[1]] = parent_b
