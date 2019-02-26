@@ -1015,11 +1015,8 @@ def recalculate_split(ii,jj,kk,heat_load,sp,Nh,Nc):
     return heat_load,sp
 ###main part
 
-
-
 global_cost,structure,global_eada_struct=GA(hot_origin,cold_origin)
-print (global_cost)
 # cost,aaa,bbbb=water_network()
-# print ('Cost is:',cost)
-# print ('Structure:',aaa)
-# print ('Water split:',bbbb)
+print ('Cost is:',global_cost)
+print ('Structure:',structure)
+print ('Water split:',global_eada_struct)
