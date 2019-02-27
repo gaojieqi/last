@@ -39,6 +39,8 @@ cold_origin=[[250,600,0.6,0],[148,600,1,0],[90,540,0.14,0],[25,110,0.09,0],[120,
 PU=[[62,62,0.7],[60,60,4.2],[70,70,10],[50,50,6.5],[60,60,0.7]]#[inlet_temperature, outlet_temperature, mass_quantity(tone)]
 index=[[0,0,1,0,0,1],[0,0,0,0,0,1],[0,0,0,0,0,1],[0,1,0,0,0,1],[1,1,1,1,1,1]]#index::1-wood preparation;2-washing;3-bleaching;4-pulp machine;5-black liquor evaporation;6-sewer
 
+
+
 def water_network(popsize=5,its=10):
     #initialize
     pr=[]
@@ -821,7 +823,6 @@ def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
                         delta_cold=T[kk][1][jj]-T[kk][0][ii]
                         A=factor*heat_load[kk][ii]*split[kk][ii][jj]/float(heat_coe*delta_T_fun(delta_hot,delta_cold))
                         # n = int(A / 100)
-                        print(A)
                         # TODO A**c_cost
                         c_capital+=(a_cost+b_cost*(A))*2.19/(t_cost*day_adt*365)
         if kk==Ns-1:
@@ -832,7 +833,6 @@ def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
                         delta_cold = T[kk][1][jj] - T[kk][0][ii]
                         A = factor*heat_load[kk][jj] * split[kk][jj][ii] / float(heat_coe* delta_T_fun(delta_hot, delta_cold))
                         # n=int(A/100)
-                        print(A)
                         #TODO A**c_cost
                         c_capital += (a_cost + b_cost * (A))*2.19 /(t_cost*day_adt*365)
     #utility cost
@@ -840,12 +840,12 @@ def fobj(hot,cold,T,split,structure_info,heat_load,cold_utility,hot_utility):
     CU=sum(cold_utility)
     HU=sum(hot_utility)
     c_energy=HU*c_hu+CU*c_cu
-    print(structure_info)
-    print("hot utility:",HU)
-    print ("cold utility:",CU)
-    print("operation cost:",c_energy)
-    print("Number of exchanger:",sum(structure_info))
-    print("fix cost:",c_capital)
+    # print(structure_info)
+    # print("hot utility:",HU)
+    # print ("cold utility:",CU)
+    # print("operation cost:",c_energy)
+    # print("Number of exchanger:",sum(structure_info))
+    # print("fix cost:",c_capital)
     c_global=c_energy+c_capital
     return 10**10/float(c_global)
 def delta_T_fun(delta_hot,delta_cold):
